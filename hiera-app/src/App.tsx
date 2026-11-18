@@ -71,8 +71,6 @@ export default function App() {
       <section className="workspace">
         <header className="topbar">
           <div className="mobile-brand">✳ hiera</div>
-          <label className="access-code-label" htmlFor="access-code">Code privé</label>
-          <input id="access-code" className="access-code-input" type="password" autoComplete="off" value={accessCode} onChange={(event) => setAccessCode(event.target.value)} placeholder="Code d'accès" aria-label="Code d'accès privé Hiera" />
           <label className="model-select-label" htmlFor="model-select">Modèle</label>
           <select id="model-select" className="model-select" value={model} onChange={(event) => setModel(event.target.value)} disabled={busy}>
             <option value="gpt-4.1-mini">GPT-4.1 mini</option>
@@ -99,6 +97,8 @@ export default function App() {
           </div>
         </div>
         <form className="composer" onSubmit={sendMessage}>
+          <label className="composer-access-label" htmlFor="access-code">Code privé Hiera</label>
+          <input id="access-code" className="composer-access-input" type="password" autoComplete="off" value={accessCode} onChange={(event) => setAccessCode(event.target.value)} placeholder="Saisis ton code privé ici" aria-label="Code d'accès privé Hiera" />
           <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Écris un message à Hiera…" rows={1} aria-label="Message à Hiera" disabled={busy} />
           {error && <p className="error-message" role="alert">{error}</p>}
           <div className="composer-footer"><span>Les réponses sont générées par le modèle OpenAI sélectionné.</span><button type="submit" disabled={!draft.trim() || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div>
