@@ -1,6 +1,16 @@
 import { useState } from 'react';
 
 type Message = { role: 'assistant' | 'user'; content: string };
+function AtomLogo() {
+  return <svg className="atom-logo" viewBox="0 0 64 64" aria-hidden="true">
+    <g fill="none" stroke="currentColor" strokeWidth="2.7">
+      <ellipse cx="32" cy="32" rx="27" ry="10" />
+      <ellipse cx="32" cy="32" rx="27" ry="10" transform="rotate(60 32 32)" opacity=".8" />
+      <ellipse cx="32" cy="32" rx="27" ry="10" transform="rotate(-60 32 32)" opacity=".95" />
+    </g>
+    <circle cx="32" cy="32" r="5.4" fill="#e4caff" />
+  </svg>;
+}
 const initialMessage: Message = {
   role: 'assistant',
   content: "Bonjour. Je suis Hiera. Je suis maintenant reliée au service IA lorsque le serveur et sa clé Groq sont configurés. Que souhaites-tu me demander ?",
@@ -59,7 +69,7 @@ export default function App() {
   return (
     <main className="shell">
       <aside className="sidebar">
-        <div className="brand"><span className="brand-mark">✳</span><span>hiera</span></div>
+        <div className="brand"><AtomLogo /><span>hiera</span></div>
         <button className="new-chat" onClick={newConversation} disabled={busy}>＋ Nouvelle conversation</button>
         <div className="side-label">ESPACE</div>
         <div className="side-link active"><span>◉</span> Conversation</div>
@@ -70,7 +80,7 @@ export default function App() {
 
       <section className="workspace">
         <header className="topbar">
-          <div className="mobile-brand">✳ hiera</div>
+          <div className="mobile-brand"><AtomLogo /><span>hiera</span></div>
           <label className="model-select-label" htmlFor="model-select">Modèle</label>
           <select id="model-select" className="model-select" value={model} onChange={(event) => setModel(event.target.value)} disabled={busy}>
             <option value="openai/gpt-oss-20b">GPT-OSS 20B</option>
