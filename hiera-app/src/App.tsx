@@ -26,13 +26,9 @@ function AtomLogo() {
     <circle cx="32" cy="32" r="5.4" fill="#e4caff" />
   </svg>;
 }
-const initialMessage: Message = {
-  role: 'assistant',
-  content: "Bonjour. Je suis Hiera. Je suis maintenant reliée au service IA lorsque le serveur et sa clé Groq sont configurés. Que souhaites-tu me demander ?",
-};
 
 export default function App() {
-  const [messages, setMessages] = useState<Message[]>([initialMessage]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState('');
   const [model, setModel] = useState('groq:openai/gpt-oss-20b');
   const [busy, setBusy] = useState(false);
@@ -41,12 +37,11 @@ export default function App() {
   const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
   const [authError, setAuthError] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('hiera-theme') as 'dark' | 'light') || 'dark');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem('hiera-theme', theme);
   }, [theme]);
 
   useEffect(() => {
@@ -149,31 +144,20 @@ export default function App() {
   }
 
   return (
-    <main className="shell">
+    <main className={`shell ${sidebarOpen ? "" : "sidebar-collapsed"}`}>
       <aside className="sidebar">
-        <div className="brand"><AtomLogo /><div><span>Hiera</span><small>Votre IA, toujours avec vous</small></div></div>
+        <button className="brand" onClick={() => setSidebarOpen((open) => !open)} aria-label="Rétracter ou afficher la barre latérale"><AtomLogo /><div><span>Hiera</span><small>Votre IA, toujours avec vous</small></div></button>
         <button className="new-chat" onClick={newConversation} disabled={busy}>＋ Nouvelle conversation</button>
         <div className="side-label">ESPACE</div>
-        <button className={`side-link ${!settingsOpen ? 'active' : ''}`} onClick={() => setSettingsOpen(false)}><span>◉</span> Conversation</button>
-        <button className={`side-link ${settingsOpen ? 'active' : ''}`} onClick={() => setSettingsOpen(true)}><span>⚙</span> Paramètres</button>
-        <div className="sidebar-account"><div className="account-status"><span className="status-dot" /> {googleUser ? "Compte connecté" : "Espace Hiera"}</div><div className="account-provider"><span className="google-g">G</span><span>{googleUser ? googleUser.email : "Assistant IA"}</span></div><span className="version">Hiera · 0.4.0</span></div>
+        <button className={`side-link ${!settingsOpen ? "active" : ""}`} onClick={() => setSettingsOpen(false)}><span>◉</span><b>Conversation</b></button>
+        <button className={`side-link ${settingsOpen ? "active" : ""}`} onClick={() => setSettingsOpen(true)}><span>⚙</span><b>Paramètres</b></button>
+        <div className="sidebar-account"><div className="account-status"><span className="status-dot" /> {googleUser ? "Google connecté" : "Compte Google"}</div>{googleUser ? <><div className="account-provider"><span className="google-g">G</span><span>{googleUser.email}</span></div><button className="account-action" onClick={logoutGoogle}>Déconnexion</button></> : <div className="google-login" ref={googleButtonRef} />}</div>
       </aside>
 
       <section className="workspace">
         <header className="topbar">
-          <div className="mobile-brand"><AtomLogo /><span>hiera</span></div>
-          {!settingsOpen && <>
-            <label className="model-select-label" htmlFor="model-select">Modèle</label>
-            <select id="model-select" className="model-select" value={model} onChange={(event) => setModel(event.target.value)} disabled={busy}>
-              <optgroup label="Groq">
-                <option value="groq:openai/gpt-oss-20b">GPT-OSS 20B</option>
-                <option value="groq:openai/gpt-oss-120b">GPT-OSS 120B</option>
-              </optgroup>
-            </select>
-            <span className="model-pill"><span className="status-dot" /> Groq</span><button className="theme-toggle" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label="Changer de thème">{theme === "dark" ? "☀" : "☾"}</button>
-          </>}
-          {googleUser ? <button className="google-user" onClick={logoutGoogle} title="Se déconnecter">{googleUser.picture && <img src={googleUser.picture} alt="" />} {googleUser.name || googleUser.email} · Déconnexion</button> : <div className="google-login" ref={googleButtonRef} />}
-          {!googleUser && <button className="avatar" aria-label="Hiera">H</button>}
+          <button className="mobile-menu-button" onClick={() => setSidebarOpen((open) => !open)} aria-label="Afficher ou masquer le menu"><AtomLogo /></button>
+          <span className="topbar-title">{settingsOpen ? "Paramètres" : "Conversation"}</span>
         </header>
 
         {settingsOpen ? (
@@ -183,10 +167,7 @@ export default function App() {
             <p className="settings-intro">Configure ton espace Hiera comme tu le souhaites.</p>
             <div className="settings-card">
               <div><h2>Apparence</h2><p>Choisis le thème de ton interface.</p></div>
-              <div className="setting-control">
-                <button className={`choice-button ${theme === 'dark' ? 'selected' : ''}`} onClick={() => setTheme('dark')}>🌙 Sombre</button>
-                <button className={`choice-button ${theme === 'light' ? 'selected' : ''}`} onClick={() => setTheme('light')}>☀️ Clair</button>
-              </div>
+              <span className="settings-note">Thème nuit Hiera</span>
             </div>
             <div className="settings-card">
               <div><h2>Modèle d'intelligence artificielle</h2><p>Choisis le modèle utilisé pour tes prochaines conversations.</p></div>
@@ -197,7 +178,7 @@ export default function App() {
             </div>
             <div className="settings-card">
               <div><h2>Compte Google</h2><p>{googleUser ? `Connecté en tant que ${googleUser.email}` : 'Aucun compte Google connecté.'}</p></div>
-              {googleUser ? <button className="settings-action" onClick={logoutGoogle}>Se déconnecter</button> : <div className="settings-google" ref={googleButtonRef} />}
+              {googleUser && <button className="settings-action" onClick={logoutGoogle}>Se déconnecter</button>}
             </div>
             <div className="settings-card">
               <div><h2>Confidentialité et sécurité</h2><p>Évite de partager des mots de passe, des clés API ou des informations personnelles dans tes conversations.</p></div>
@@ -209,12 +190,7 @@ export default function App() {
             <div className="conversation">
               {authError && <p className="auth-error" role="alert">{authError}</p>}
               {!googleClientId && <p className="auth-hint">Connexion Google : configuration à terminer sur Render.</p>}
-              <div className="welcome">
-                <div className="atom" aria-hidden="true"><span className="nucleus" /><i className="orbit orbit-one" /><i className="orbit orbit-two" /><i className="orbit orbit-three" /></div>
-                <p className="eyebrow">TON ESPACE IA</p>
-                <h1>Bonjour, bienvenue<br /><em>dans Hiera.</em></h1>
-                <p className="subtitle">Pose tes questions, je suis là pour t’aider !</p>
-              </div>
+              {messages.length === 0 && <div className="welcome compact-welcome"><h1>Hiera</h1><p className="subtitle">Que souhaites-tu faire aujourd’hui ?</p></div>}
               <div className="messages" aria-live="polite">
                 {messages.map((message, index) => (
                   <article className={`message ${message.role}`} key={index}>
@@ -228,7 +204,7 @@ export default function App() {
             <form className="composer" onSubmit={sendMessage}>
               <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Écris un message à Hiera…" rows={1} aria-label="Message à Hiera" disabled={busy} />
               {error && <p className="error-message" role="alert">{error}</p>}
-              <div className="composer-footer"><span>Le fournisseur et le modèle sélectionnés génèrent les réponses.</span><button type="submit" disabled={!draft.trim() || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div>
+              <div className="composer-footer"><span>Pose ta question à Hiera</span><button type="submit" disabled={!draft.trim() || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div>
             </form>
             <p className="disclaimer">Ne partage jamais de données personnelles ou confidentielles dans une conversation.</p>
           </>
