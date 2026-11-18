@@ -259,3 +259,11 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
  .integration-grid{grid-template-columns:1fr}
  .integration-item{padding:10px}
 }
+
+
+/* Four clear settings destinations: account, services, privacy and security */
+.settings-shortcuts{grid-template-columns:repeat(4,minmax(0,1fr));}
+.settings-shortcuts button{min-height:112px;}
+.security-logout{margin-top:14px;}
+@media(max-width:900px){.settings-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:520px){.settings-shortcuts{grid-template-columns:1fr;}.settings-shortcuts button{min-height:0;}}
