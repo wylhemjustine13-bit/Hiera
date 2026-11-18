@@ -16,6 +16,10 @@ const PORT = Number(process.env.HIERA_API_PORT || 3001);
 const MAX_BODY = 1_000_000;
 const allowedModels = new Set(['gpt-4.1-mini', 'gpt-4.1']);
 
+// Le secret GitHub peut être transmis au serveur sous son nom exact.
+// OPENAI_API_KEY reste accepté pour les installations locales existantes.
+const OPENAI_API_KEY = process.env.Key_API_Hiera || process.env.OPENAI_API_KEY;
+
 function send(res, status, payload) {
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
@@ -27,13 +31,13 @@ function send(res, status, payload) {
 
 const server = createServer(async (req, res) => {
   if (req.method === 'GET' && req.url === '/api/health') {
-    return send(res, 200, { ok: true, configured: Boolean(process.env.OPENAI_API_KEY) });
+    return send(res, 200, { ok: true, configured: Boolean(OPENAI_API_KEY) });
   }
   if (req.method !== 'POST' || req.url !== '/api/chat') {
     return send(res, 404, { error: 'Route introuvable.' });
   }
-  if (!process.env.OPENAI_API_KEY) {
-    return send(res, 503, { error: 'Clé API manquante. Configure OPENAI_API_KEY dans le fichier .env du serveur.' });
+  if (!OPENAI_API_KEY) {
+    return send(res, 503, { error: 'Clé API manquante. Configure Key_API_Hiera dans l’environnement du serveur.' });
   }
 
   try {
@@ -57,7 +61,7 @@ const server = createServer(async (req, res) => {
     const upstream = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
