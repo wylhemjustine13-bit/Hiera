@@ -1,7 +1,8 @@
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, createReadStream, statSync } from 'node:fs';
 import { resolve, extname, normalize, sep } from 'node:path';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, createHmac } from 'node:crypto';
+import { OAuth2Client } from 'google-auth-library';
 
 const envPath = resolve(process.cwd(), '.env');
 if (existsSync(envPath)) {
@@ -18,6 +19,9 @@ const MAX_BODY = 1_000_000;
 const allowedModels = new Set(['openai/gpt-oss-20b', 'openai/gpt-oss-120b']);
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const ACCESS_PASSWORD = process.env.HIERA_ACCESS_PASSWORD;
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const HIERA_SESSION_SECRET = process.env.HIERA_SESSION_SECRET;
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const DIST_DIR = resolve(process.cwd(), 'dist');
 
@@ -30,8 +34,42 @@ function send(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
+function signSession(payload) {
+  const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = createHmac('sha256', HIERA_SESSION_SECRET).update(encoded).digest('base64url');
+  return `${encoded}.${signature}`;
+}
+
+function readSession(req) {
+  if (!HIERA_SESSION_SECRET) return null;
+  const cookie = (req.headers.cookie || '').split(';').map((part) => part.trim()).find((part) => part.startsWith('hiera_session='));
+  if (!cookie) return null;
+  let value;
+  try { value = decodeURIComponent(cookie.slice('hiera_session='.length)); } catch { return null; }
+  const [encoded, signature] = value.split('.');
+  if (!encoded || !signature) return null;
+  const expected = createHmac('sha256', HIERA_SESSION_SECRET).update(encoded).digest();
+  const supplied = Buffer.from(signature, 'base64url');
+  if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+    if (!payload.sub || !payload.exp || payload.exp < Math.floor(Date.now() / 1000)) return null;
+    return { sub: payload.sub, email: payload.email, name: payload.name, picture: payload.picture };
+  } catch { return null; }
+}
+
+async function readJson(req) {
+  let raw = '';
+  for await (const chunk of req) {
+    raw += chunk;
+    if (raw.length > MAX_BODY) throw new Error('Requête trop volumineuse.');
+  }
+  return JSON.parse(raw || '{}');
+}
+
 function isAuthorized(req) {
   if (!IS_PRODUCTION) return true;
+  if (readSession(req)) return true;
   if (!ACCESS_PASSWORD) return false;
   const supplied = req.headers['x-hiera-access-code'];
   if (typeof supplied !== 'string') return false;
@@ -88,6 +126,43 @@ function serveFrontend(req, res, pathname) {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || '/', 'http://localhost');
   if (req.method === 'GET' && url.pathname === '/api/health') {
+    return send(res, 200, { ok: true });
+  }
+  if (req.method === 'GET' && url.pathname === '/api/config') {
+    return send(res, 200, { googleClientId: GOOGLE_CLIENT_ID || '' });
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/auth/me') {
+    return send(res, 200, { user: readSession(req) });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/auth/google') {
+    if (!GOOGLE_CLIENT_ID || !HIERA_SESSION_SECRET) {
+      return send(res, 503, { error: 'La connexion Google doit être configurée sur Render.' });
+    }
+    try {
+      const body = await readJson(req);
+      if (typeof body.credential !== 'string' || body.credential.length > 10000) {
+        return send(res, 400, { error: 'Identifiant Google invalide.' });
+      }
+      const ticket = await googleClient.verifyIdToken({ idToken: body.credential, audience: GOOGLE_CLIENT_ID });
+      const profile = ticket.getPayload();
+      if (!profile?.sub || !profile.email || profile.email_verified !== true) {
+        return send(res, 401, { error: 'Le compte Google n’a pas pu être vérifié.' });
+      }
+      const session = signSession({
+        sub: profile.sub, email: profile.email, name: profile.name || '',
+        picture: profile.picture || '', exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
+      });
+      res.setHeader('Set-Cookie', `hiera_session=${encodeURIComponent(session)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=604800`);
+      return send(res, 200, { user: { email: profile.email, name: profile.name || '', picture: profile.picture || '' } });
+    } catch {
+      return send(res, 401, { error: 'La vérification Google a échoué. Réessaie.' });
+    }
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/auth/logout') {
+    res.setHeader('Set-Cookie', 'hiera_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0');
     return send(res, 200, { ok: true });
   }
 
