@@ -15,8 +15,8 @@ if (existsSync(envPath)) {
 
 const PORT = Number(process.env.PORT || process.env.HIERA_API_PORT || 3001);
 const MAX_BODY = 1_000_000;
-const allowedModels = new Set(['gpt-4.1-mini', 'gpt-4.1']);
-const OPENAI_API_KEY = process.env.Key_API_Hiera || process.env.OPENAI_API_KEY;
+const allowedModels = new Set(['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']);
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const ACCESS_PASSWORD = process.env.HIERA_ACCESS_PASSWORD;
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const DIST_DIR = resolve(process.cwd(), 'dist');
@@ -99,8 +99,8 @@ const server = createServer(async (req, res) => {
     if (!isAuthorized(req)) {
       return send(res, 401, { error: 'Code d’accès incorrect.' });
     }
-    if (!OPENAI_API_KEY) {
-      return send(res, 503, { error: 'Clé API manquante. Configure Key_API_Hiera dans l’environnement du serveur.' });
+    if (!GROQ_API_KEY) {
+      return send(res, 503, { error: 'Clé Groq manquante. Configure GROQ_API_KEY dans l’environnement du serveur.' });
     }
 
     try {
@@ -110,28 +110,30 @@ const server = createServer(async (req, res) => {
         if (raw.length > MAX_BODY) return send(res, 413, { error: 'Message trop volumineux.' });
       }
       const body = JSON.parse(raw || '{}');
-      const model = allowedModels.has(body.model) ? body.model : 'gpt-4.1-mini';
+      const model = allowedModels.has(body.model) ? body.model : 'llama-3.3-70b-versatile';
       if (!Array.isArray(body.messages) || body.messages.length === 0 || body.messages.length > 60) {
         return send(res, 400, { error: 'Historique de conversation invalide.' });
       }
-      const input = body.messages.map((message) => {
+      const messages = [{
+        role: 'system',
+        content: "Tu es Hiera, un assistant IA utile, honnête et bienveillant. Réponds en français sauf si l'utilisateur demande une autre langue. N'invente pas de capacités ou d'actions que tu n'as pas réalisées.",
+      }, ...body.messages.map((message) => {
         if (!['user', 'assistant'].includes(message?.role) || typeof message.content !== 'string') {
           throw new Error('Format de message invalide.');
         }
         return { role: message.role, content: message.content.slice(0, 20000) };
-      });
+      })];
 
-      const upstream = await fetch('https://api.openai.com/v1/responses', {
+      const upstream = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          Authorization: `Bearer ${GROQ_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           model,
-          instructions: "Tu es Hiera, un assistant IA utile, honnête et bienveillant. Réponds en français sauf si l'utilisateur demande une autre langue. N'invente pas de capacités ou d'actions que tu n'as pas réalisées.",
-          input,
-          max_output_tokens: 1200,
+          messages,
+          max_completion_tokens: 1200,
         }),
       });
 
@@ -142,16 +144,11 @@ const server = createServer(async (req, res) => {
         return send(res, status, { error: message });
       }
 
-      const reply = typeof result.output_text === 'string'
-        ? result.output_text
-        : (result.output || []).flatMap((item) => item.content || [])
-            .filter((part) => part.type === 'output_text')
-            .map((part) => part.text)
-            .join('\n')
-            .trim();
-
-      if (!reply) return send(res, 502, { error: 'La réponse du fournisseur était vide.' });
-      return send(res, 200, { reply });
+      const reply = result?.choices?.[0]?.message?.content;
+      if (typeof reply !== 'string' || !reply.trim()) {
+        return send(res, 502, { error: 'La réponse du fournisseur était vide.' });
+      }
+      return send(res, 200, { reply: reply.trim() });
     } catch (error) {
       return send(res, 400, { error: error instanceof Error ? error.message : 'Requête invalide.' });
     }
