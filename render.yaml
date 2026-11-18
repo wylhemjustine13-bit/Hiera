@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: hiera
+    runtime: node
+    plan: free
+    branch: hiera-independent
+    rootDir: hiera-app
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: Key_API_Hiera
+        sync: false
+      - key: HIERA_ACCESS_PASSWORD
+        sync: false
