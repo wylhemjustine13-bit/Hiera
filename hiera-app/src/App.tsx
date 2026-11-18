@@ -165,7 +165,8 @@ export default function App() {
             <nav className="settings-shortcuts" aria-label="Raccourcis des paramètres">
               <button onClick={() => document.getElementById('account-settings')?.scrollIntoView({behavior:'smooth'})}><span>👤</span><strong>Compte Google</strong><small>Connexion à Hiera</small></button>
               <button onClick={() => document.getElementById('apps-settings')?.scrollIntoView({behavior:'smooth'})}><span>▦</span><strong>Applications et services</strong><small>Gérer les connexions</small></button>
-              <button onClick={() => document.getElementById('privacy-settings')?.scrollIntoView({behavior:'smooth'})}><span>🛡</span><strong>Confidentialité et sécurité</strong><small>Protéger ton compte</small></button>
+              <button onClick={() => document.getElementById('privacy-settings')?.scrollIntoView({behavior:'smooth'})}><span>🔒</span><strong>Confidentialité</strong><small>Données et informations</small></button>
+              <button onClick={() => document.getElementById('security-settings')?.scrollIntoView({behavior:'smooth'})}><span>🛡</span><strong>Sécurité</strong><small>Session et protections</small></button>
             </nav>
             <div className="settings-section-heading"><h2>Préférences</h2><p>Personnalise ton expérience Hiera.</p></div>
             <div className="settings-card">
@@ -223,16 +224,24 @@ export default function App() {
                 </article>
               ))}
             </div>
-            <div className="settings-section-heading" id="privacy-settings"><h2>Confidentialité et sécurité</h2><p>Informations et protections de ton espace.</p></div>
+            <div className="settings-section-heading" id="privacy-settings"><h2>Confidentialité</h2><p>Garde le contrôle sur les informations utilisées dans Hiera.</p></div>
             <div className="settings-card privacy-settings-card">
               <div className="privacy-list">
-                <div><strong>Session Google</strong><span>{googleUser ? "Connectée" : "Aucune session Google active"}</span></div>
-                <div><strong>Déconnexion</strong><span>{googleUser ? "Tu peux fermer ta session depuis Compte Google." : "Aucune session à fermer."}</span></div>
-                <div><strong>Clés et mots de passe</strong><span>Ne les partage jamais dans une conversation. Les clés API doivent rester dans les variables privées de Render.</span></div>
+                <div><strong>Données des conversations</strong><span>Évite d'inclure des informations personnelles, scolaires ou confidentielles dans tes messages.</span></div>
                 <div><strong>Accès des applications</strong><span>Aucune application tierce n'a actuellement reçu d'autorisation de Hiera.</span></div>
-                <div><strong>Autorisations</strong><span>Les connexions seront demandées une par une, avec une page officielle d'autorisation.</span></div>
-                <div><strong>Protection des données</strong><span>Évite d'envoyer des informations personnelles ou confidentielles dans tes conversations.</span></div>
+                <div><strong>Autorisations</strong><span>Les services connectés devront demander uniquement les accès nécessaires, via leur page officielle.</span></div>
+                <div><strong>Partage des données</strong><span>Ne transmets pas de données privées à un service externe sans vérifier les autorisations demandées.</span></div>
               </div>
+            </div>
+            <div className="settings-section-heading" id="security-settings"><h2>Sécurité</h2><p>État de ta session et bonnes pratiques de protection.</p></div>
+            <div className="settings-card privacy-settings-card">
+              <div className="privacy-list">
+                <div><strong>Session Google</strong><span>{googleUser ? "Compte connecté à Hiera." : "Aucune session Google active."}</span></div>
+                <div><strong>Déconnexion</strong><span>{googleUser ? "Tu peux fermer ta session avec le bouton ci-dessous." : "Aucune session Google active à fermer."}</span></div>
+                <div><strong>Clés API et mots de passe</strong><span>Garde-les dans les variables privées de Render. Ne les colle jamais dans le code public ni dans une conversation.</span></div>
+                <div><strong>Protection de la session</strong><span>Utilise un mot de passe fiable pour ton compte Google et déconnecte-toi sur un appareil partagé.</span></div>
+              </div>
+              {googleUser && <button className="settings-action security-logout" onClick={logoutGoogle}>Déconnecter le compte Google</button>}
             </div>
           </section>        ) : (
           <>
