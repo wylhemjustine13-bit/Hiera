@@ -37,7 +37,8 @@ export default function App() {
   const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
   const [authError, setAuthError] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsNotice, setSettingsNotice] = useState('');
+  const [settingsPage, setSettingsPage] = useState('home');
+  const [appSearch, setAppSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(() => !window.matchMedia("(max-width: 760px)").matches);
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
@@ -138,7 +139,41 @@ export default function App() {
     setMessages([]);
     setError('');
     setSettingsOpen(false);
+    setSettingsPage('home');
   }
+
+  const applications = [
+    {name:'Google',slug:'google',desc:'Compte Google et services'},
+    {name:'Google Agenda',slug:'googlecalendar',desc:'Événements et rendez-vous'},
+    {name:'Gmail',slug:'gmail',desc:'E-mails et boîte de réception'},
+    {name:'Google Drive',slug:'googledrive',desc:'Fichiers et documents'},
+    {name:'Google Docs',slug:'googledocs',desc:'Documents texte'},
+    {name:'Google Sheets',slug:'googlesheets',desc:'Tableurs et données'},
+    {name:'Google Meet',slug:'googlemeet',desc:'Réunions et visioconférences'},
+    {name:'Google Photos',slug:'googlephotos',desc:'Photothèque'},
+    {name:'YouTube',slug:'youtube',desc:'Chaîne et contenus'},
+    {name:'GitHub',slug:'github',desc:'Dépôts et projets de code'},
+    {name:'Jira',slug:'jira',desc:'Projets et suivi des tâches'},
+    {name:'GitLab',slug:'gitlab',desc:'Dépôts et CI/CD'},
+    {name:'Bitbucket',slug:'bitbucket',desc:'Dépôts de code'},
+    {name:'Discord',slug:'discord',desc:'Communautés et messages'},
+    {name:'Slack',slug:'slack',desc:'Espaces de travail'},
+    {name:'Notion',slug:'notion',desc:'Notes et espaces de travail'},
+    {name:'Dropbox',slug:'dropbox',desc:'Stockage de fichiers'},
+    {name:'Microsoft OneDrive',slug:'microsoftonedrive',desc:'Fichiers Microsoft'},
+    {name:'Outlook',slug:'microsoftoutlook',desc:'E-mails et calendrier'},
+    {name:'Trello',slug:'trello',desc:'Tableaux et tâches'},
+    {name:'Spotify',slug:'spotify',desc:'Musique et playlists'},
+    {name:'Figma',slug:'figma',desc:'Design et prototypes'},
+    {name:'Canva',slug:'canva',desc:'Créations graphiques'},
+    {name:'Zoom',slug:'zoom',desc:'Réunions en ligne'},
+    {name:'Instagram',slug:'instagram',desc:'Compte et publications'},
+    {name:'TikTok',slug:'tiktok',desc:'Compte et contenus'},
+    {name:'LinkedIn',slug:'linkedin',desc:'Profil et réseau professionnel'},
+    {name:'X',slug:'x',desc:'Compte et publications'},
+  ];
+  const filteredApplications = applications.filter((app) => (app.name + ' ' + app.desc).toLowerCase().includes(appSearch.toLowerCase()));
+  const settingsTitles: Record<string, string> = {home:'Paramètres',account:'Compte Google',apps:'Applications et services',privacy:'Confidentialité',security:'Sécurité',preferences:'Préférences'};
 
   return (
     <main className={`shell ${sidebarOpen ? "" : "sidebar-collapsed"}`}>
@@ -147,7 +182,7 @@ export default function App() {
         <button className="new-chat" onClick={newConversation} disabled={busy}>＋ Nouvelle conversation</button>
         <div className="side-label">ESPACE</div>
         <button className={`side-link ${!settingsOpen ? "active" : ""}`} onClick={() => setSettingsOpen(false)}><span>◉</span><b>Conversation</b></button>
-        <button className={`side-link ${settingsOpen ? "active" : ""}`} onClick={() => setSettingsOpen(true)}><span>⚙</span><b>Paramètres</b></button>
+        <button className={`side-link ${settingsOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(true); setSettingsPage("home"); }}><span>⚙</span><b>Paramètres</b></button>
         <div className="sidebar-account"><div className="account-status"><span className="status-dot" /> {googleUser ? "Google connecté" : "Compte non connecté"}</div><div className="account-provider"><span className="google-g">G</span><span>{googleUser ? googleUser.email : "Gérer dans Paramètres"}</span></div></div>
       </aside>
 
@@ -158,91 +193,59 @@ export default function App() {
         </header>
 
         {settingsOpen ? (
-          <section className="settings-page">
+          <section className="settings-page settings-redesign">
+            {settingsPage !== 'home' && <button className="settings-back" onClick={() => setSettingsPage('home')}>← Retour aux paramètres</button>}
             <p className="eyebrow">ESPACE PERSONNEL</p>
-            <h1>Paramètres</h1>
-            <p className="settings-intro">Gère ton compte, tes connexions et le fonctionnement de Hiera.</p>
-            <nav className="settings-shortcuts" aria-label="Raccourcis des paramètres">
-              <button onClick={() => document.getElementById('account-settings')?.scrollIntoView({behavior:'smooth'})}><span>👤</span><strong>Compte Google</strong><small>Connexion à Hiera</small></button>
-              <button onClick={() => document.getElementById('apps-settings')?.scrollIntoView({behavior:'smooth'})}><span>▦</span><strong>Applications et services</strong><small>Gérer les connexions</small></button>
-              <button onClick={() => document.getElementById('privacy-settings')?.scrollIntoView({behavior:'smooth'})}><span>🔒</span><strong>Confidentialité</strong><small>Données et informations</small></button>
-              <button onClick={() => document.getElementById('security-settings')?.scrollIntoView({behavior:'smooth'})}><span>🛡</span><strong>Sécurité</strong><small>Session et protections</small></button>
-            </nav>
-            <div className="settings-section-heading"><h2>Préférences</h2><p>Personnalise ton expérience Hiera.</p></div>
-            <div className="settings-card">
-              <div><h2>Apparence</h2><p>Le thème nuit violet est actuellement utilisé.</p></div>
-              <span className="settings-note">Thème nuit</span>
-            </div>
-            <div className="settings-card">
-              <div><h2>Modèle d'intelligence artificielle</h2><p>Choisis le modèle utilisé pour tes prochaines conversations.</p></div>
-              <select className="settings-select" value={model} onChange={(event) => setModel(event.target.value)}>
-                <option value="groq:openai/gpt-oss-20b">GPT-OSS 20B (Groq)</option>
-                <option value="groq:openai/gpt-oss-120b">GPT-OSS 120B (Groq)</option>
-              </select>
-            </div>
-            <div className="settings-section-heading" id="account-settings"><h2>Compte Google</h2><p>Compte utilisé pour ouvrir ta session Hiera.</p></div>
-            <div className="settings-card account-settings-card">
-              <div className="settings-card-copy"><h2>Connexion à Hiera</h2><p>Cette connexion identifie ton compte. Elle n'autorise pas encore Hiera à lire tes e-mails ou ton agenda.</p></div>
-              <div className="google-settings-control">
-                {googleUser ? <><div className="google-account-identity"><span className="google-g">G</span><span><strong>{googleUser.name || "Compte Google"}</strong><small>{googleUser.email}</small></span></div><button className="settings-action" onClick={logoutGoogle}>Se déconnecter</button></> : <><div className="google-login settings-google-login" ref={googleButtonRef} />{!googleClientId && <small className="settings-help">La connexion Google doit être configurée sur Render.</small>}</>}
-                {authError && <small className="settings-error" role="alert">{authError}</small>}
+            <h1>{settingsTitles[settingsPage] || 'Paramètres'}</h1>
+            {settingsPage === 'home' && <>
+              <p className="settings-intro">Choisis une rubrique pour gérer ton espace Hiera.</p>
+              <div className="settings-home-grid">
+                <button className="settings-home-button" onClick={() => setSettingsPage('account')}><span className="settings-home-icon">G</span><strong>Compte Google</strong><small>Connexion et compte utilisé par Hiera</small><b>Ouvrir →</b></button>
+                <button className="settings-home-button" onClick={() => setSettingsPage('apps')}><span className="settings-home-icon"><img src="https://cdn.simpleicons.org/googlechrome" alt="" /></span><strong>Applications et services</strong><small>Rechercher et gérer les services</small><b>Ouvrir →</b></button>
+                <button className="settings-home-button" onClick={() => setSettingsPage('privacy')}><span className="settings-home-icon">◈</span><strong>Confidentialité</strong><small>Informations et autorisations</small><b>Ouvrir →</b></button>
+                <button className="settings-home-button" onClick={() => setSettingsPage('security')}><span className="settings-home-icon">⌑</span><strong>Sécurité</strong><small>Session, déconnexion et secrets</small><b>Ouvrir →</b></button>
+                <button className="settings-home-button" onClick={() => setSettingsPage('preferences')}><span className="settings-home-icon">⚙</span><strong>Préférences</strong><small>Apparence et modèle IA</small><b>Ouvrir →</b></button>
               </div>
-            </div>
-            <div className="settings-section-heading" id="apps-settings"><h2>Applications et services</h2><p>Chaque service possède sa propre autorisation. Les boutons restent indisponibles tant que sa connexion sécurisée n'est pas configurée.</p></div>
-            {settingsNotice && <p className="settings-notice" role="status">{settingsNotice}</p>}
-            <div className="integration-grid">
-              {[
-                {name:'Google Agenda',slug:'googlecalendar',desc:'Événements et rendez-vous'},
-                {name:'Gmail',slug:'gmail',desc:'E-mails et boîte de réception'},
-                {name:'Google Drive',slug:'googledrive',desc:'Fichiers et documents'},
-                {name:'Google Docs',slug:'googledocs',desc:'Documents texte'},
-                {name:'Google Sheets',slug:'googlesheets',desc:'Tableurs et données'},
-                {name:'Google Meet',slug:'googlemeet',desc:'Réunions et visioconférences'},
-                {name:'Google Photos',slug:'googlephotos',desc:'Photothèque'},
-                {name:'YouTube',slug:'youtube',desc:'Chaîne et contenus'},
-                {name:'GitHub',slug:'github',desc:'Dépôts et projets de code'},
-                {name:'Discord',slug:'discord',desc:'Communautés et messages'},
-                {name:'Slack',slug:'slack',desc:'Espaces de travail'},
-                {name:'Notion',slug:'notion',desc:'Notes et espaces de travail'},
-                {name:'Dropbox',slug:'dropbox',desc:'Stockage de fichiers'},
-                {name:'Microsoft OneDrive',slug:'microsoftonedrive',desc:'Fichiers Microsoft'},
-                {name:'Outlook',slug:'microsoftoutlook',desc:'E-mails et calendrier'},
-                {name:'Trello',slug:'trello',desc:'Tableaux et tâches'},
-                {name:'Spotify',slug:'spotify',desc:'Musique et playlists'},
-                {name:'Figma',slug:'figma',desc:'Design et prototypes'},
-                {name:'Canva',slug:'canva',desc:'Créations graphiques'},
-                {name:'Zoom',slug:'zoom',desc:'Réunions en ligne'},
-                {name:'Instagram',slug:'instagram',desc:'Compte et publications'},
-                {name:'TikTok',slug:'tiktok',desc:'Compte et contenus'},
-                {name:'LinkedIn',slug:'linkedin',desc:'Profil et réseau professionnel'},
-                {name:'X',slug:'x',desc:'Compte et publications'},
-              ].map((app) => (
-                <article className="integration-item" key={app.slug}>
-                  <img className="integration-logo" src={`https://cdn.simpleicons.org/${app.slug}`} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.visibility='hidden'; }} />
-                  <div className="integration-copy"><strong>{app.name}</strong><small>{app.desc}</small><em>Connexion à configurer</em></div>
-                  <button className="integration-connect" disabled title="L'autorisation OAuth de ce service n'est pas encore configurée" onClick={() => setSettingsNotice(`La connexion ${app.name} n'est pas encore activée. Elle nécessite une autorisation officielle et une configuration sécurisée.`)}>Connecter</button>
-                </article>
-              ))}
-            </div>
-            <div className="settings-section-heading" id="privacy-settings"><h2>Confidentialité</h2><p>Garde le contrôle sur les informations utilisées dans Hiera.</p></div>
-            <div className="settings-card privacy-settings-card">
-              <div className="privacy-list">
-                <div><strong>Données des conversations</strong><span>Évite d'inclure des informations personnelles, scolaires ou confidentielles dans tes messages.</span></div>
-                <div><strong>Accès des applications</strong><span>Aucune application tierce n'a actuellement reçu d'autorisation de Hiera.</span></div>
-                <div><strong>Autorisations</strong><span>Les services connectés devront demander uniquement les accès nécessaires, via leur page officielle.</span></div>
-                <div><strong>Partage des données</strong><span>Ne transmets pas de données privées à un service externe sans vérifier les autorisations demandées.</span></div>
+            </>}
+            {settingsPage === 'account' && <div className="settings-detail">
+              <p className="settings-description">Ce compte sert à ouvrir ta session Hiera. Il ne donne pas automatiquement accès à Gmail, Drive ou Agenda.</p>
+              <div className="settings-feature-card">
+                <div className="settings-feature-heading"><span className="google-g">G</span><div><strong>Connexion à Hiera</strong><small>{googleUser ? 'Compte Google connecté' : 'Aucun compte connecté'}</small></div></div>
+                {googleUser ? <><div className="settings-account-line"><strong>{googleUser.name || 'Compte Google'}</strong><span>{googleUser.email}</span></div><button className="settings-primary-button" onClick={logoutGoogle}>Se déconnecter</button></> : <><div className="google-login settings-google-login" ref={googleButtonRef} />{!googleClientId && <p className="settings-warning">La connexion Google doit être configurée sur Render.</p>}</>}
+                {authError && <p className="settings-warning" role="alert">{authError}</p>}
               </div>
-            </div>
-            <div className="settings-section-heading" id="security-settings"><h2>Sécurité</h2><p>État de ta session et bonnes pratiques de protection.</p></div>
-            <div className="settings-card privacy-settings-card">
-              <div className="privacy-list">
-                <div><strong>Session Google</strong><span>{googleUser ? "Compte connecté à Hiera." : "Aucune session Google active."}</span></div>
-                <div><strong>Déconnexion</strong><span>{googleUser ? "Tu peux fermer ta session avec le bouton ci-dessous." : "Aucune session Google active à fermer."}</span></div>
-                <div><strong>Clés API et mots de passe</strong><span>Garde-les dans les variables privées de Render. Ne les colle jamais dans le code public ni dans une conversation.</span></div>
-                <div><strong>Protection de la session</strong><span>Utilise un mot de passe fiable pour ton compte Google et déconnecte-toi sur un appareil partagé.</span></div>
+            </div>}
+            {settingsPage === 'apps' && <div className="settings-detail">
+              <p className="settings-description">Retrouve les services que tu souhaites utiliser avec Hiera. Recherche une application par son nom.</p>
+              <label className="app-search-box"><span>⌕</span><input value={appSearch} onChange={(event) => setAppSearch(event.target.value)} placeholder="Rechercher une application..." aria-label="Rechercher une application" /></label>
+              <div className="application-directory">
+                {filteredApplications.map((app) => <article className="application-card" key={app.slug}>
+                  <img className="application-brand-logo" src={`https://cdn.simpleicons.org/${app.slug}`} alt={`Logo ${app.name}`} loading="lazy" onError={(event) => { event.currentTarget.style.opacity='0'; }} />
+                  <div className="application-card-copy"><strong>{app.name}</strong><small>{app.desc}</small><em>Connexion non configurée</em></div>
+                  <button className="application-connect-button" disabled title="L'autorisation officielle de ce service n'est pas encore configurée">Connecter</button>
+                </article>)}
+                {filteredApplications.length === 0 && <p className="settings-empty">Aucune application ne correspond à « {appSearch} ».</p>}
               </div>
-              {googleUser && <button className="settings-action security-logout" onClick={logoutGoogle}>Déconnecter le compte Google</button>}
-            </div>
+            </div>}
+            {settingsPage === 'privacy' && <div className="settings-detail">
+              <p className="settings-description">Quelques règles simples pour garder le contrôle sur tes informations.</p>
+              <div className="settings-feature-card"><strong>Données des conversations</strong><p>Évite d'envoyer des informations personnelles ou confidentielles dans tes messages.</p></div>
+              <div className="settings-feature-card"><strong>Accès des applications</strong><p>Aucune application tierce n'a actuellement reçu d'autorisation de Hiera.</p></div>
+              <div className="settings-feature-card"><strong>Autorisations</strong><p>Une connexion ne sera active qu'après la configuration et l'autorisation officielle du service concerné.</p></div>
+            </div>}
+            {settingsPage === 'security' && <div className="settings-detail">
+              <p className="settings-description">Les contrôles ci-dessous correspondent à ce qui est actuellement disponible dans Hiera.</p>
+              <div className="settings-feature-card">
+                <div className="settings-feature-heading"><span className="security-feature-icon">◉</span><div><strong>Session Google</strong><small>{googleUser ? 'Session active' : 'Aucune session active'}</small></div></div>
+                {googleUser && <button className="settings-primary-button" onClick={logoutGoogle}>Déconnecter le compte Google</button>}
+              </div>
+              <div className="settings-feature-card"><strong>Clés API et mots de passe</strong><p>Les clés API et mots de passe techniques doivent rester dans les variables privées de Render. Ne les ajoute jamais au code public.</p><a className="settings-text-link" href="https://dashboard.render.com/web/srv-dbunvn6k1f9s73as351g" target="_blank" rel="noreferrer">Ouvrir les paramètres privés Render ↗</a></div>
+              <div className="settings-feature-card"><strong>Protection de la session</strong><p>La connexion Google identifie ton compte. Hiera ne dispose pas encore d'un verrouillage par code ni d'une fonction de discussion verrouillée.</p></div>
+            </div>}
+            {settingsPage === 'preferences' && <div className="settings-detail">
+              <div className="settings-feature-card"><strong>Apparence</strong><p>Le thème nuit violet est actuellement utilisé.</p><span className="settings-static-value">Thème nuit</span></div>
+              <div className="settings-feature-card"><strong>Modèle d'intelligence artificielle</strong><p>Choisis le modèle utilisé pour tes prochaines conversations.</p><select className="settings-select" value={model} onChange={(event) => setModel(event.target.value)}><option value="groq:openai/gpt-oss-20b">GPT-OSS 20B (Groq)</option><option value="groq:openai/gpt-oss-120b">GPT-OSS 120B (Groq)</option></select></div>
+            </div>}
           </section>        ) : (
           <>
             <div className="conversation">
