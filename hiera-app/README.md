@@ -1,6 +1,6 @@
 # Hiera — assistant IA indépendant
 
-Hiera est une application indépendante avec sa propre interface et son propre serveur de connexion aux modèles IA.
+Hiera est une application indépendante avec sa propre interface et son propre serveur de connexion aux modèles IA de Groq.
 
 ## Déploiement Render
 
@@ -8,7 +8,7 @@ Le dépôt contient un fichier `render.yaml` à sa racine. Dans Render, crée un
 
 Après la création du service, ouvre **Environment** dans Render et ajoute les deux variables secrètes :
 
-- `Key_API_Hiera` : ta clé API OpenAI.
+- `GROQ_API_KEY` : ta clé API Groq.
 - `HIERA_ACCESS_PASSWORD` : un code privé que tu choisis et que tu ne partages avec personne.
 
 Ne colle jamais ces valeurs dans GitHub, dans le code du projet ou dans cette conversation. Dans l'interface Hiera hébergée, saisis le code privé dans le champ « Code privé » avant d'envoyer un message.
@@ -28,7 +28,7 @@ npm install
 Copie `.env.example` vers `.env`, puis renseigne les valeurs localement :
 
 ```env
-Key_API_Hiera=ta_cle_api_ici
+GROQ_API_KEY=ta_cle_groq_ici
 HIERA_ACCESS_PASSWORD=ton_code_prive
 HIERA_API_PORT=3001
 ```
@@ -47,14 +47,14 @@ Ouvre ensuite http://localhost:5173.
 - Le code d'accès protège l'API sur le déploiement public.
 - Le fichier `.env` est ignoré par Git.
 - Ne partage ni ta clé API ni ton code privé.
-- L'utilisation de l'API OpenAI peut entraîner des frais selon ton compte et ton utilisation. Vérifie les limites et la facturation avec un parent ou responsable.
+- Les offres et limites de Groq peuvent évoluer. Vérifie les quotas et conditions du compte avant utilisation.
 
 ## Fonctionnalités
 
 - Interface de conversation responsive.
 - Identité visuelle violette avec atome flottant.
-- Appels réels à l'API OpenAI via le serveur.
-- Choix entre GPT-4.1 mini et GPT-4.1.
+- Appels réels à l'API Groq via le serveur.
+- Choix entre Llama 3.3 70B et Llama 3.1 8B Instant.
 - Code privé requis pour utiliser l'API en production.
 - Affichage de l'état de génération et des erreurs.
 
