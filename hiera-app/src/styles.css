@@ -405,3 +405,16 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 
 .sidebar-dismiss-zone{position:fixed;z-index:4;left:258px;top:0;bottom:0;width:20px;border:0;background:transparent;cursor:pointer}
 @media(max-width:760px){.sidebar-dismiss-zone{left:min(82vw,290px);right:0;width:auto;background:#05030a55;z-index:19}}
+
+
+/* Nested security/data-protection navigation and settings controls */
+.settings-subnav{display:flex;flex-wrap:wrap;gap:8px;padding:5px;border:1px solid #7651a344;border-radius:12px;background:#100b26;width:max-content;max-width:100%}
+.settings-subnav button{border:1px solid transparent;border-radius:9px;background:transparent;color:#b9accb;padding:8px 12px;font-size:10px;cursor:pointer}
+.settings-subnav button:hover{background:#ffffff0b;color:#f3eaff}
+.settings-subnav button.active{border-color:#8d5bc5;background:#6c36a633;color:#f4eaff}
+.settings-check{align-items:flex-start;line-height:1.5;cursor:pointer}
+.settings-check input{margin-top:2px;width:15px;height:15px;flex:none}
+.settings-feature-card .settings-select{max-width:320px}
+:root[data-theme="light"] .settings-subnav{background:#f8f3ff;border-color:#e0d0f2}
+:root[data-theme="light"] .settings-subnav button{color:#6d6078}
+:root[data-theme="light"] .settings-subnav button.active{background:#eadcff;border-color:#d2b7f3;color:#39244f}
