@@ -3,7 +3,7 @@
 :root{font-family:'DM Sans',sans-serif;color:#f5f0ff;background:#100d18;font-synthesis:none;text-rendering:optimizeLegibility}
 *{box-sizing:border-box}
 body{margin:0;min-width:320px;min-height:100vh}
-button,textarea{font:inherit}
+button,textarea,input,select{font:inherit}
 .shell{min-height:100vh;display:grid;grid-template-columns:260px 1fr;background:radial-gradient(ellipse at 65% 5%,#251638 0%,#100d18 48%)}
 .sidebar{height:100vh;position:sticky;top:0;border-right:1px solid #ffffff12;padding:28px 18px;display:flex;flex-direction:column;background:#100d18aa}
 .brand{display:flex;align-items:center;gap:11px;font:800 25px Manrope,sans-serif;letter-spacing:-1.5px;padding:0 10px 35px}
@@ -15,16 +15,20 @@ button,textarea{font:inherit}
 .sidebar-bottom{margin-top:auto;border-top:1px solid #ffffff12;padding:18px 5px 0;color:#958aa2;font-size:11px;display:flex;align-items:center;gap:8px}
 .status-dot{width:7px;height:7px;background:#9c77dc;border-radius:50%;display:inline-block}.version{margin-left:auto;color:#6e6478}
 .workspace{min-height:100vh;display:flex;flex-direction:column;max-width:1120px;width:100%;margin:auto;padding:0 48px 22px}
-.topbar{height:76px;display:flex;align-items:center;justify-content:flex-end;border-bottom:1px solid #ffffff10;gap:16px}
+.topbar{height:76px;display:flex;align-items:center;justify-content:flex-end;border-bottom:1px solid #ffffff10;gap:12px}
 .model-pill{font-size:11px;color:#b9adc8;border:1px solid #ffffff18;border-radius:30px;padding:8px 12px;display:flex;align-items:center;gap:8px}
 .avatar{width:32px;height:32px;border-radius:50%;border:1px solid #8d6db6;background:#342347;color:#f4eaff}
 .mobile-brand{display:none;font:800 21px Manrope,sans-serif;margin-right:auto}
+.access-code-label,.model-select-label{font-size:10px;color:#a99eb5}
+.access-code-input,.model-select{background:#1b1524;border:1px solid #574365;border-radius:9px;color:#eee5f7;padding:8px 9px;font-size:11px;min-width:105px;max-width:135px}
+.access-code-input::placeholder{color:#857a90}
 .conversation{width:100%;max-width:760px;margin:0 auto;flex:1;display:flex;flex-direction:column}
 .welcome{text-align:center;padding:52px 0 20px}
 .atom{height:112px;width:112px;margin:0 auto 18px;position:relative;display:grid;place-items:center;filter:drop-shadow(0 0 24px #a875ff55);animation:atom-float 5s ease-in-out infinite}
 .nucleus{width:19px;height:19px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#d6aaff 38%,#8c4fe2 75%);box-shadow:0 0 24px #b77cff}
 .orbit{position:absolute;width:100px;height:39px;border:1.5px solid #b78af0;border-radius:50%;transform:rotate(0deg)}
-.orbit-two{transform:rotate(60deg);border-color:#8d72d6}.orbit-three{transform:rotate(-60deg);border-color:#d1a6ff}\n@keyframes atom-float{0%,100%{translate:0 0}50%{translate:0 -9px}}
+.orbit-two{transform:rotate(60deg);border-color:#8d72d6}.orbit-three{transform:rotate(-60deg);border-color:#d1a6ff}
+@keyframes atom-float{0%,100%{translate:0 0}50%{translate:0 -9px}}
 .eyebrow{font-size:10px;letter-spacing:3px;color:#a98bc8;margin:0 0 12px}
 h1{font:600 clamp(34px,5vw,49px)/1.12 Manrope,sans-serif;letter-spacing:-2px;margin:0}
 h1 em{font-style:normal;color:#c7a1ff}
@@ -41,4 +45,4 @@ h1 em{font-style:normal;color:#c7a1ff}
 .composer-footer button{border:0;border-radius:10px;width:31px;height:31px;background:#a77be0;color:#160d20;font-size:21px;cursor:pointer}
 .composer-footer button:disabled{opacity:.4;cursor:not-allowed}
 .disclaimer{text-align:center;color:#746b7e;font-size:10px;margin:11px 0 0}
-@media(max-width:760px){.shell{display:block}.sidebar{display:none}.workspace{padding:0 17px 18px}.topbar{height:62px;justify-content:flex-end}.mobile-brand{display:block}.welcome{padding:45px 0 15px}.atom{transform:scale(.9);margin-bottom:10px}.message{max-width:96%}.composer-footer span{max-width:80%;line-height:1.4}}
+@media(max-width:760px){.shell{display:block}.sidebar{display:none}.workspace{padding:0 12px 18px}.topbar{height:62px;justify-content:flex-end;gap:7px}.mobile-brand{display:block;font-size:18px}.access-code-label,.model-select-label{display:none}.access-code-input,.model-select{min-width:82px;max-width:105px;padding:7px 6px;font-size:10px}.model-pill{padding:7px 8px;font-size:10px}.avatar{width:29px;height:29px}.welcome{padding:45px 0 15px}.atom{transform:scale(.9);margin-bottom:10px}.message{max-width:96%}.composer-footer span{max-width:80%;line-height:1.4}}
