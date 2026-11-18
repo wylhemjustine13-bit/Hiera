@@ -21,10 +21,10 @@ button,textarea{font:inherit}
 .mobile-brand{display:none;font:800 21px Manrope,sans-serif;margin-right:auto}
 .conversation{width:100%;max-width:760px;margin:0 auto;flex:1;display:flex;flex-direction:column}
 .welcome{text-align:center;padding:52px 0 20px}
-.atom{height:112px;width:112px;margin:0 auto 18px;position:relative;display:grid;place-items:center;filter:drop-shadow(0 0 24px #a875ff55)}
+.atom{height:112px;width:112px;margin:0 auto 18px;position:relative;display:grid;place-items:center;filter:drop-shadow(0 0 24px #a875ff55);animation:atom-float 5s ease-in-out infinite}
 .nucleus{width:19px;height:19px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#d6aaff 38%,#8c4fe2 75%);box-shadow:0 0 24px #b77cff}
 .orbit{position:absolute;width:100px;height:39px;border:1.5px solid #b78af0;border-radius:50%;transform:rotate(0deg)}
-.orbit-two{transform:rotate(60deg);border-color:#8d72d6}.orbit-three{transform:rotate(-60deg);border-color:#d1a6ff}
+.orbit-two{transform:rotate(60deg);border-color:#8d72d6}.orbit-three{transform:rotate(-60deg);border-color:#d1a6ff}\n@keyframes atom-float{0%,100%{translate:0 0}50%{translate:0 -9px}}
 .eyebrow{font-size:10px;letter-spacing:3px;color:#a98bc8;margin:0 0 12px}
 h1{font:600 clamp(34px,5vw,49px)/1.12 Manrope,sans-serif;letter-spacing:-2px;margin:0}
 h1 em{font-style:normal;color:#c7a1ff}
