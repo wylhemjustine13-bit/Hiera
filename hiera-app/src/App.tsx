@@ -41,10 +41,6 @@ export default function App() {
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
-
-  useEffect(() => {
     let active = true;
     Promise.all([
       fetch('/api/config').then((r) => r.json()),
@@ -179,6 +175,10 @@ export default function App() {
             <div className="settings-card">
               <div><h2>Compte Google</h2><p>{googleUser ? `Connecté en tant que ${googleUser.email}` : 'Aucun compte Google connecté.'}</p></div>
               {googleUser && <button className="settings-action" onClick={logoutGoogle}>Se déconnecter</button>}
+            </div>
+            <div className="settings-card integrations-card">
+              <div><h2>Applications et services</h2><p>Les connexions seront ajoutées progressivement. Chaque service demandera une autorisation sécurisée.</p></div>
+              <div className="integration-list"><span>Google Agenda · À venir</span><span>Gmail · À venir</span><span>GitHub · À venir</span><span>Gemini · À étudier</span><span>Instagram et TikTok · À étudier</span></div>
             </div>
             <div className="settings-card">
               <div><h2>Confidentialité et sécurité</h2><p>Évite de partager des mots de passe, des clés API ou des informations personnelles dans tes conversations.</p></div>
