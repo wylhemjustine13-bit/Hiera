@@ -9,7 +9,7 @@ const initialMessage: Message = {
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [draft, setDraft] = useState('');
-  const [model, setModel] = useState('llama-3.3-70b-versatile');
+  const [model, setModel] = useState('openai/gpt-oss-20b');
   const [accessCode, setAccessCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -73,8 +73,8 @@ export default function App() {
           <div className="mobile-brand">✳ hiera</div>
           <label className="model-select-label" htmlFor="model-select">Modèle</label>
           <select id="model-select" className="model-select" value={model} onChange={(event) => setModel(event.target.value)} disabled={busy}>
-            <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
-            <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
+            <option value="openai/gpt-oss-20b">GPT-OSS 20B</option>
+            <option value="openai/gpt-oss-120b">GPT-OSS 120B</option>
           </select>
           <span className="model-pill"><span className="status-dot" /> Groq</span>
           <button className="avatar" aria-label="Hiera">H</button>
