@@ -151,12 +151,12 @@ export default function App() {
   return (
     <main className="shell">
       <aside className="sidebar">
-        <div className="brand"><AtomLogo /><span>hiera</span></div>
+        <div className="brand"><AtomLogo /><div><span>Hiera</span><small>Votre IA, toujours avec vous</small></div></div>
         <button className="new-chat" onClick={newConversation} disabled={busy}>＋ Nouvelle conversation</button>
         <div className="side-label">ESPACE</div>
         <button className={`side-link ${!settingsOpen ? 'active' : ''}`} onClick={() => setSettingsOpen(false)}><span>◉</span> Conversation</button>
         <button className={`side-link ${settingsOpen ? 'active' : ''}`} onClick={() => setSettingsOpen(true)}><span>⚙</span> Paramètres</button>
-        <div className="sidebar-bottom"><span className="status-dot" /> Projet indépendant <span className="version">0.4.0</span></div>
+        <div className="sidebar-account"><div className="account-status"><span className="status-dot" /> {googleUser ? "Compte connecté" : "Espace Hiera"}</div><div className="account-provider"><span className="google-g">G</span><span>{googleUser ? googleUser.email : "Assistant IA"}</span></div><span className="version">Hiera · 0.4.0</span></div>
       </aside>
 
       <section className="workspace">
@@ -170,7 +170,7 @@ export default function App() {
                 <option value="groq:openai/gpt-oss-120b">GPT-OSS 120B</option>
               </optgroup>
             </select>
-            <span className="model-pill"><span className="status-dot" /> Groq</span>
+            <span className="model-pill"><span className="status-dot" /> Groq</span><button className="theme-toggle" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label="Changer de thème">{theme === "dark" ? "☀" : "☾"}</button>
           </>}
           {googleUser ? <button className="google-user" onClick={logoutGoogle} title="Se déconnecter">{googleUser.picture && <img src={googleUser.picture} alt="" />} {googleUser.name || googleUser.email} · Déconnexion</button> : <div className="google-login" ref={googleButtonRef} />}
           {!googleUser && <button className="avatar" aria-label="Hiera">H</button>}
@@ -213,7 +213,7 @@ export default function App() {
                 <div className="atom" aria-hidden="true"><span className="nucleus" /><i className="orbit orbit-one" /><i className="orbit orbit-two" /><i className="orbit orbit-three" /></div>
                 <p className="eyebrow">TON ESPACE IA</p>
                 <h1>Bonjour, bienvenue<br /><em>dans Hiera.</em></h1>
-                <p className="subtitle">Un nouvel espace pour réfléchir, apprendre et créer.</p>
+                <p className="subtitle">Pose tes questions, je suis là pour t’aider !</p>
               </div>
               <div className="messages" aria-live="polite">
                 {messages.map((message, index) => (
