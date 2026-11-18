@@ -225,3 +225,37 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
  .google-account-identity{margin-right:0}
  .settings-action{width:100%}
 }
+
+
+/* Settings navigation and application directory */
+.settings-shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0 28px}
+.settings-shortcuts button{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:15px;border:1px solid #7651a366;border-radius:14px;background:linear-gradient(145deg,#21143d,#120c28);color:#f5edff;text-align:left;cursor:pointer}
+.settings-shortcuts button:hover{border-color:#bd8aff;transform:translateY(-2px)}
+.settings-shortcuts button>span{font-size:21px;color:#c39aff}
+.settings-shortcuts strong{font-size:12px}
+.settings-shortcuts small{font-size:10px;color:#b7a9c9}
+.settings-section-heading{scroll-margin-top:14px;margin:30px 0 12px}
+.settings-section-heading h2{font:700 19px Manrope,sans-serif;margin:0 0 5px;color:#f5edff}
+.settings-section-heading p{margin:0;color:#b7a9c9;font-size:12px;line-height:1.55}
+.integration-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%}
+.integration-item{display:flex;align-items:center;gap:11px;min-width:0;padding:12px;border:1px solid #7651a355;border-radius:13px;background:#ffffff06}
+.integration-logo{width:30px;height:30px;object-fit:contain;flex:none}
+.integration-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.integration-copy strong{font-size:11px;color:#f1eaff}
+.integration-copy small{font-size:10px;color:#a99abb;line-height:1.35}
+.integration-copy em{font-style:normal;font-size:9px;color:#c6a7ef}
+.integration-connect{border:1px solid #7651a355;border-radius:9px;padding:7px 9px;background:#ffffff08;color:#c7b9df;font-size:10px;white-space:nowrap;cursor:not-allowed;opacity:.72}
+.integration-connect:disabled{cursor:not-allowed}
+.settings-notice{padding:11px 13px;border:1px solid #a77aff55;border-radius:10px;background:#6c36a622;color:#e5d6ff;font-size:11px;line-height:1.5}
+:root[data-theme="light"] .settings-shortcuts button{background:#fff;border-color:#d8c4f2;color:#39244f}
+:root[data-theme="light"] .settings-shortcuts small,:root[data-theme="light"] .settings-section-heading p{color:#6d6078}
+:root[data-theme="light"] .settings-section-heading h2,:root[data-theme="light"] .integration-copy strong{color:#39244f}
+:root[data-theme="light"] .integration-item{background:#fff;border-color:#e4d7f2}
+:root[data-theme="light"] .integration-copy small{color:#6d6078}
+:root[data-theme="light"] .integration-connect{color:#5e426f;border-color:#d8c4f2}
+@media(max-width:700px){
+ .settings-shortcuts{grid-template-columns:1fr}
+ .settings-shortcuts button{padding:12px}
+ .integration-grid{grid-template-columns:1fr}
+ .integration-item{padding:10px}
+}
