@@ -31,7 +31,7 @@ function AtomLogo() {
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>(() => { try { return JSON.parse(localStorage.getItem('hiera-conversations') || '[]'); } catch { return []; } });
-  const [currentConversationId, setCurrentConversationId] = useState(() => crypto.randomUUID());
+  const [currentConversationId, setCurrentConversationId] = useState<string>(() => crypto.randomUUID());
   const [showArchived, setShowArchived] = useState(false);
   const [settingsValues, setSettingsValues] = useState<Record<string, any>>(() => { try { return JSON.parse(localStorage.getItem('hiera-settings') || '{}'); } catch { return {}; } });
   const [draft, setDraft] = useState('');
