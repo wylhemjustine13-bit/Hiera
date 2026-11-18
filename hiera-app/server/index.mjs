@@ -168,7 +168,7 @@ const server = createServer(async (req, res) => {
 
   if (url.pathname === '/api/chat') {
     if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
-    if (IS_PRODUCTION && !ACCESS_PASSWORD) {
+    if (IS_PRODUCTION && !ACCESS_PASSWORD && !readSession(req)) {
       return send(res, 503, { error: 'HIERA_ACCESS_PASSWORD doit être configuré sur l’hébergeur.' });
     }
     if (!isAuthorized(req)) {
