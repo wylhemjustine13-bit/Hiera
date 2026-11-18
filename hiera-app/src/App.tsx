@@ -3,13 +3,13 @@ import { useState } from 'react';
 type Message = { role: 'assistant' | 'user'; content: string };
 const initialMessage: Message = {
   role: 'assistant',
-  content: "Bonjour. Je suis Hiera. Je suis maintenant reliée au service IA lorsque le serveur et sa clé API sont configurés. Que souhaites-tu me demander ?",
+  content: "Bonjour. Je suis Hiera. Je suis maintenant reliée au service IA lorsque le serveur et sa clé Groq sont configurés. Que souhaites-tu me demander ?",
 };
 
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [draft, setDraft] = useState('');
-  const [model, setModel] = useState('gpt-4.1-mini');
+  const [model, setModel] = useState('llama-3.3-70b-versatile');
   const [accessCode, setAccessCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -73,10 +73,10 @@ export default function App() {
           <div className="mobile-brand">✳ hiera</div>
           <label className="model-select-label" htmlFor="model-select">Modèle</label>
           <select id="model-select" className="model-select" value={model} onChange={(event) => setModel(event.target.value)} disabled={busy}>
-            <option value="gpt-4.1-mini">GPT-4.1 mini</option>
-            <option value="gpt-4.1">GPT-4.1</option>
+            <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
+            <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
           </select>
-          <span className="model-pill"><span className="status-dot" /> OpenAI</span>
+          <span className="model-pill"><span className="status-dot" /> Groq</span>
           <button className="avatar" aria-label="Hiera">H</button>
         </header>
         <div className="conversation">
@@ -101,7 +101,7 @@ export default function App() {
           <input id="access-code" className="composer-access-input" type="password" autoComplete="off" value={accessCode} onChange={(event) => setAccessCode(event.target.value)} placeholder="Saisis ton code privé ici" aria-label="Code d'accès privé Hiera" />
           <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Écris un message à Hiera…" rows={1} aria-label="Message à Hiera" disabled={busy} />
           {error && <p className="error-message" role="alert">{error}</p>}
-          <div className="composer-footer"><span>Les réponses sont générées par le modèle OpenAI sélectionné.</span><button type="submit" disabled={!draft.trim() || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div>
+          <div className="composer-footer"><span>Les réponses sont générées par les modèles Groq sélectionnés.</span><button type="submit" disabled={!draft.trim() || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div>
         </form>
         <p className="disclaimer">Ne partage jamais de données personnelles ou confidentielles dans une conversation.</p>
       </section>
