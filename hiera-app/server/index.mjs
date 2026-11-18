@@ -15,7 +15,7 @@ if (existsSync(envPath)) {
 
 const PORT = Number(process.env.PORT || process.env.HIERA_API_PORT || 3001);
 const MAX_BODY = 1_000_000;
-const allowedModels = new Set(['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']);
+const allowedModels = new Set(['openai/gpt-oss-20b', 'openai/gpt-oss-120b']);
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const ACCESS_PASSWORD = process.env.HIERA_ACCESS_PASSWORD;
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
@@ -110,7 +110,7 @@ const server = createServer(async (req, res) => {
         if (raw.length > MAX_BODY) return send(res, 413, { error: 'Message trop volumineux.' });
       }
       const body = JSON.parse(raw || '{}');
-      const model = allowedModels.has(body.model) ? body.model : 'llama-3.3-70b-versatile';
+      const model = allowedModels.has(body.model) ? body.model : 'openai/gpt-oss-20b';
       if (!Array.isArray(body.messages) || body.messages.length === 0 || body.messages.length > 60) {
         return send(res, 400, { error: 'Historique de conversation invalide.' });
       }
