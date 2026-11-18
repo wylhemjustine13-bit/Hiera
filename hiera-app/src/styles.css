@@ -561,3 +561,15 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
   .settings-page h1 { font-size:26px; }
 }
 :root[data-theme="light"] .sidebar-dismiss-zone { background:#10091f66; }
+
+
+/* Keep Conversation and Settings together and fully visible in the mobile drawer */
+.sidebar-primary-nav{display:flex;flex-direction:column;gap:6px;flex:none;width:100%;min-width:0}
+.sidebar-primary-nav .side-link{flex:none;width:100%;min-width:0;margin:0;overflow:visible}
+.sidebar-primary-nav .side-link b{display:block;min-width:0;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:760px){
+  .sidebar-primary-nav{gap:8px;margin:2px 0 8px;padding:0}
+  .sidebar-primary-nav .side-link{min-height:48px;padding:12px 14px;border-radius:12px}
+  .sidebar-primary-nav .side-link span{display:inline-flex;align-items:center;justify-content:center}
+  .sidebar .history-heading{margin-top:12px}
+}
