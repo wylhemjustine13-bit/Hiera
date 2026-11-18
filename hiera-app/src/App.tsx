@@ -43,12 +43,13 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsPage, setSettingsPage] = useState('home');
+  const [wellbeingSection, setWellbeingSection] = useState<'security' | 'privacy'>('security');
   const [appSearch, setAppSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(() => !window.matchMedia("(max-width: 760px)").matches);
   const googleButtonRef = useRef<HTMLDivElement>(null);
   function updateSetting(key: string, value: any) { setSettingsValues((current) => ({ ...current, [key]: value })); }
   function persistConversation(items: Message[], id = currentConversationId) {
-    if (!items.length) return;
+    if (!items.length || settingsValues.saveHistory === false) return;
     const first = items.find((item) => item.role === 'user')?.content || 'Nouvelle conversation';
     setConversations((current) => [{ id, title: first.slice(0, 42), messages: items, updatedAt: Date.now() }, ...current.filter((item) => item.id !== id)].slice(0, 100));
   }
@@ -137,6 +138,10 @@ export default function App() {
         body: JSON.stringify({
           provider: 'groq',
           model,
+          language: settingsValues.language || 'fr',
+          familySafeMode: settingsValues.familySafeMode !== false,
+          assistantName: settingsValues.assistantName || 'Hiera',
+          replyStyle: settingsValues.replyStyle || 'friendly',
           messages: nextMessages.map(({ role, content: text }) => ({ role, content: text })),
         }),
       });
@@ -192,7 +197,7 @@ export default function App() {
     {name:'X',slug:'x',desc:'Compte et publications'},
   ];
   const filteredApplications = applications.filter((app) => (app.name + ' ' + app.desc).toLowerCase().includes(appSearch.toLowerCase()));
-  const settingsItems = [["account","Compte et connexion","Compte Google, session et profil","◉"],["parental","Contrôle parental","Informations sur les contrôles du compte","⌂"],["wellbeing","Sécurité et bien-être","Confidentialité et usage équilibré","♡"],["usage","Utilisation","Activité et statistiques locales","▤"],["billing","Facturation","État des achats et abonnements","€"],["general","Général","Langue, démarrage et comportement","⚙"],["theme","Thème","Apparence claire ou sombre","◐"],["notifications","Notifications","Préférences de notification","♢"],["voice","Voix","Lecture vocale des réponses","♫"],["personalization","Personnalisation","Nom et style de Hiera","✧"],["companion","Compagnon","Comportement du compagnon","◉"],["keyboard","Clavier","Raccourcis et envoi des messages","⌨"],["history","Chats et archivés","Historique et conversations archivées","▣"],["storage","Stockage et données","Gestion des conversations locales","▤"],["plugins","Plugins","Extensions disponibles","▦"],["security","Mot de passe et revue de code","Sécurité et dépôt du projet","⌑"],["apps","Applications et services","Connexions externes","▦"],["privacy","Confidentialité","Données et autorisations","◈"],["preferences","Modèles IA","Choix du modèle de conversation","✧"]];
+  const settingsItems = [["account","Compte et connexion","Compte Google, session et profil","◉"],["parental","Contrôle parental","Préférences de réponse et ressources familiales","⌂"],["wellbeing","Sécurité et bien-être","Sécurité du compte et protection des données","♡"],["usage","Utilisation","Activité et statistiques locales","▤"],["billing","Facturation","État des achats et abonnements","€"],["general","Général","Langue et comportement de la touche Entrée","⚙"],["theme","Thème","Apparence claire ou sombre","◐"],["notifications","Notifications","Préférences de notification","♢"],["voice","Voix","Lecture vocale des réponses","♫"],["personalization","Personnalisation","Nom et style de Hiera","✧"],["companion","Compagnon","État des fonctions du compagnon","◉"],["history","Chats et archivés","Historique et conversations archivées","▣"],["storage","Stockage et données","Gestion des conversations locales","▤"],["plugins","Plugins","Extensions disponibles","▦"],["apps","Applications et services","Connexions externes","▦"],["preferences","Modèles IA","Choix du modèle de conversation","✧"]];
   const settingsTitles: Record<string, string> = Object.fromEntries([['home','Paramètres'], ...settingsItems.map(([id,title]) => [id,title])]);
 
   return (
@@ -220,7 +225,7 @@ export default function App() {
             <h1>{settingsTitles[settingsPage] || 'Paramètres'}</h1>
             {settingsPage === 'home' && <>
               <p className="settings-intro">Choisis une rubrique pour gérer ton espace Hiera.</p>
-              <div className="settings-home-grid">{settingsItems.map(([id,title,description,icon]) => <button className="settings-home-button" key={id} onClick={() => setSettingsPage(id)}><span className="settings-home-icon">{icon}</span><strong>{title}</strong><small>{description}</small><b>Ouvrir →</b></button>)}</div>
+              <div className="settings-home-grid">{settingsItems.map(([id,title,description,icon]) => <button className="settings-home-button" key={id} onClick={() => { setSettingsPage(id); if (id === 'wellbeing') setWellbeingSection('security'); }}><span className="settings-home-icon">{icon}</span><strong>{title}</strong><small>{description}</small></button>)}</div>
             </>}
             {settingsPage === 'account' && <div className="settings-detail">
               <p className="settings-description">Ce compte sert à ouvrir ta session Hiera. Il ne donne pas automatiquement accès à Gmail, Drive ou Agenda.</p>
@@ -242,23 +247,81 @@ export default function App() {
                 {filteredApplications.length === 0 && <p className="settings-empty">Aucune application ne correspond à « {appSearch} ».</p>}
               </div>
             </div>}
-            {settingsPage === 'privacy' && <div className="settings-detail">
-              <p className="settings-description">Quelques règles simples pour garder le contrôle sur tes informations.</p>
-              <div className="settings-feature-card"><strong>Données des conversations</strong><p>Évite d'envoyer des informations personnelles ou confidentielles dans tes messages.</p></div>
-              <div className="settings-feature-card"><strong>Accès des applications</strong><p>Aucune application tierce n'a actuellement reçu d'autorisation de Hiera.</p></div>
-              <div className="settings-feature-card"><strong>Autorisations</strong><p>Une connexion ne sera active qu'après la configuration et l'autorisation officielle du service concerné.</p></div>
+
+            {settingsPage === 'parental' && <div className="settings-detail">
+              <p className="settings-description">Ces préférences agissent sur les réponses de Hiera. Elles ne remplacent pas les contrôles parentaux du téléphone, de l'ordinateur ou du compte Google.</p>
+              <div className="settings-feature-card">
+                <strong>Réponses adaptées</strong>
+                <label className="settings-check"><input type="checkbox" checked={settingsValues.familySafeMode !== false} onChange={(event) => updateSetting('familySafeMode', event.target.checked)} /> Garder un langage et des explications adaptés à un public adolescent</label>
+                <p>Quand cette option est activée, Hiera reçoit une consigne supplémentaire pour privilégier des explications adaptées. Les protections de sécurité de base restent appliquées dans tous les cas.</p>
+              </div>
+              <div className="settings-feature-card">
+                <strong>Contrôles familiaux de l'appareil</strong>
+                <p>Les limites de temps, les autorisations d'applications et les restrictions du compte se règlent depuis les paramètres familiaux officiels de l'appareil. Hiera ne peut pas modifier ces réglages à ta place.</p>
+                <a className="settings-text-link" href="https://families.google.com/" target="_blank" rel="noreferrer">Ouvrir Google Family Link ↗</a>
+              </div>
             </div>}
-            {settingsPage === 'parental' && <div className="settings-detail"><div className="settings-feature-card"><strong>Contrôle parental</strong><p>Hiera n'a pas encore de tableau de contrôle parental intégré. Les restrictions du compte et de l'appareil se règlent depuis les outils familiaux officiels.</p><a className="settings-text-link" href="https://help.openai.com/" target="_blank" rel="noreferrer">Centre d'aide ↗</a></div></div>}
-            {settingsPage === 'wellbeing' && <div className="settings-detail"><div className="settings-feature-card"><strong>Sécurité et bien-être</strong><p>Évite de partager des informations privées. Tu peux faire une pause à tout moment. Hiera ne suit pas ton activité en dehors de l'application.</p></div><div className="settings-feature-card"><strong>Protection des données</strong><p>Les autorisations des services tiers restent désactivées tant que leur connexion officielle n'est pas mise en place.</p></div></div>}
+            {settingsPage === 'wellbeing' && <div className="settings-detail">
+              <div className="settings-subnav" role="tablist" aria-label="Sécurité et bien-être">
+                <button type="button" role="tab" aria-selected={wellbeingSection === 'security'} className={wellbeingSection === 'security' ? 'active' : ''} onClick={() => setWellbeingSection('security')}>Sécurité du compte</button>
+                <button type="button" role="tab" aria-selected={wellbeingSection === 'privacy'} className={wellbeingSection === 'privacy' ? 'active' : ''} onClick={() => setWellbeingSection('privacy')}>Protection des données</button>
+              </div>
+              {wellbeingSection === 'security' ? <>
+                <div className="settings-feature-card">
+                  <div className="settings-feature-heading"><span className="security-feature-icon">◉</span><div><strong>Connexion Google</strong><small>{googleUser ? 'Session Hiera active' : 'Aucune session Google active'}</small></div></div>
+                  <p>La connexion Google identifie ta session Hiera. Elle n'autorise pas automatiquement Gmail, Drive ou Agenda.</p>
+                  {googleUser && <button className="settings-primary-button" onClick={logoutGoogle}>Déconnecter le compte Google</button>}
+                  <button className="settings-text-link" onClick={() => { setSettingsPage('account'); }}>Gérer la connexion du compte</button>
+                </div>
+                <div className="settings-feature-card">
+                  <strong>Clés API et revue de code</strong>
+                  <p>Les clés API et mots de passe techniques doivent rester dans les variables privées de l'hébergeur. Ne les ajoute jamais au code public.</p>
+                  <a className="settings-text-link" href="https://dashboard.render.com/web/srv-dbunvn6k1f9s73as351g" target="_blank" rel="noreferrer">Ouvrir les paramètres privés Render ↗</a>
+                  <a className="settings-text-link" href="https://github.com/wylhemjustine13-bit/Hiera" target="_blank" rel="noreferrer">Ouvrir le dépôt pour la revue de code ↗</a>
+                </div>
+                <div className="settings-feature-card">
+                  <strong>Bien-être</strong>
+                  <p>Tu peux faire une pause à tout moment. Hiera ne suit pas ton activité en dehors de l'application et ne lit pas les autres fenêtres de ton appareil.</p>
+                </div>
+              </> : <>
+                <div className="settings-feature-card">
+                  <strong>Enregistrement des conversations</strong>
+                  <label className="settings-check"><input type="checkbox" checked={settingsValues.saveHistory !== false} onChange={(event) => { if (event.target.checked) updateSetting('saveHistory', true); else if (window.confirm('Désactiver l’historique supprimera les conversations sauvegardées sur cet appareil. Continuer ?')) { updateSetting('saveHistory', false); setConversations([]); } }} /> Enregistrer les conversations sur cet appareil</label>
+                  <p>Quand cette option est désactivée, les prochaines conversations ne sont plus ajoutées à l'historique local. Les messages de la conversation en cours restent visibles jusqu'à ce que tu quittes ou actualises la page.</p>
+                </div>
+                <div className="settings-feature-card">
+                  <strong>Données enregistrées sur cet appareil</strong>
+                  <p>{conversations.length} conversation(s) · {conversations.reduce((total, conversation) => total + conversation.messages.length, 0)} message(s).</p>
+                  <button className="settings-primary-button" onClick={() => { const data = new Blob([JSON.stringify(conversations, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(data); const link = document.createElement('a'); link.href = url; link.download = 'hiera-conversations.json'; link.click(); URL.revokeObjectURL(url); }}>Exporter mes conversations</button>
+                  <button className="settings-text-link" onClick={() => { if (window.confirm('Supprimer toutes les conversations enregistrées sur cet appareil ?')) { setConversations([]); setMessages([]); setCurrentConversationId(crypto.randomUUID()); } }}>Effacer les conversations enregistrées</button>
+                </div>
+              </>}
+            </div>}
             {settingsPage === 'usage' && <div className="settings-detail"><div className="settings-feature-card"><strong>Utilisation locale</strong><p>{conversations.length} conversation(s) enregistrée(s) sur cet appareil.</p><p>{conversations.reduce((n,c) => n+c.messages.length,0)} messages conservés dans l'historique local.</p></div></div>}
             {settingsPage === 'billing' && <div className="settings-detail"><div className="settings-feature-card"><strong>Facturation</strong><p>Hiera n'a pas encore de système d'achat ou d'abonnement intégré. Aucun paiement n'est géré depuis cette page.</p></div></div>}
-            {settingsPage === 'general' && <div className="settings-detail"><div className="settings-feature-card"><strong>Langue</strong><p>Langue actuelle de l'interface : français. Le changement de langue n'est pas encore disponible.</p></div><div className="settings-feature-card"><strong>Barre latérale</strong><button className="settings-primary-button" onClick={() => setSidebarOpen(true)}>Afficher la barre latérale</button></div></div>}
+            {settingsPage === 'general' && <div className="settings-detail">
+              <div className="settings-feature-card">
+                <strong>Langue des réponses</strong>
+                <p>Choisis la langue dans laquelle Hiera doit te répondre. Les menus et les textes de l'interface restent actuellement en français.</p>
+                <select className="settings-select" value={settingsValues.language || 'fr'} onChange={(event) => updateSetting('language', event.target.value)}>
+                  <option value="fr">Français</option><option value="en">English</option><option value="es">Español</option><option value="de">Deutsch</option><option value="it">Italiano</option><option value="pt">Português</option><option value="nl">Nederlands</option><option value="pl">Polski</option><option value="ru">Русский</option><option value="uk">Українська</option><option value="ar">العربية</option><option value="zh">中文</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="hi">हिन्दी</option><option value="bn">বাংলা</option><option value="tr">Türkçe</option><option value="sv">Svenska</option><option value="no">Norsk</option><option value="da">Dansk</option><option value="fi">Suomi</option><option value="el">Ελληνικά</option><option value="he">עברית</option><option value="th">ไทย</option><option value="vi">Tiếng Việt</option><option value="id">Bahasa Indonesia</option><option value="sw">Kiswahili</option><option value="ro">Română</option><option value="cs">Čeština</option><option value="hu">Magyar</option>
+                </select>
+              </div>
+              <div className="settings-feature-card">
+                <strong>Raccourci d'envoi</strong>
+                <p>Choisis ce que fait la touche Entrée dans la zone de message. Maj + Entrée insère toujours une nouvelle ligne.</p>
+                <select className="settings-select" value={settingsValues.enterBehavior || (settingsValues.enterToSend === false ? 'newline' : 'send')} onChange={(event) => updateSetting('enterBehavior', event.target.value)}>
+                  <option value="send">Entrée envoie le message</option>
+                  <option value="newline">Entrée insère une nouvelle ligne</option>
+                </select>
+              </div>
+            </div>}
             {settingsPage === 'theme' && <div className="settings-detail"><div className="settings-feature-card"><strong>Apparence</strong><p>Choisis l'apparence de Hiera.</p><select className="settings-select" value={settingsValues.theme || 'dark'} onChange={(e) => updateSetting('theme',e.target.value)}><option value="dark">Sombre violet</option><option value="light">Clair</option></select></div></div>}
             {settingsPage === 'notifications' && <div className="settings-detail"><div className="settings-feature-card"><strong>Notifications du navigateur</strong><p>Autorise ou bloque les notifications de Hiera dans ton navigateur.</p><span className="settings-static-value">État : {typeof Notification === 'undefined' ? 'Non pris en charge' : Notification.permission}</span><button className="settings-primary-button" onClick={async () => { if (typeof Notification !== 'undefined') { const permission = await Notification.requestPermission(); updateSetting('notificationPermission',permission); } }}>Configurer les notifications</button></div></div>}
             {settingsPage === 'voice' && <div className="settings-detail"><div className="settings-feature-card"><strong>Lecture vocale</strong><p>Teste la synthèse vocale disponible dans ton navigateur.</p><button className="settings-primary-button" onClick={() => { if ('speechSynthesis' in window) { const utterance = new SpeechSynthesisUtterance('Bonjour, je suis Hiera.'); utterance.lang='fr-FR'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(utterance); } }}>Tester la voix</button><button className="settings-text-link" onClick={() => window.speechSynthesis?.cancel()}>Arrêter la lecture</button></div></div>}
-            {settingsPage === 'personalization' && <div className="settings-detail"><div className="settings-feature-card"><strong>Nom de l'assistant</strong><input className="settings-select" value={settingsValues.assistantName || 'Hiera'} onChange={(e) => updateSetting('assistantName',e.target.value)} /><p>Cette préférence est enregistrée sur cet appareil. Son application au style des réponses sera ajoutée dans une prochaine étape.</p></div><div className="settings-feature-card"><strong>Style de réponse</strong><select className="settings-select" value={settingsValues.replyStyle || 'friendly'} onChange={(e) => updateSetting('replyStyle',e.target.value)}><option value="friendly">Naturel et amical</option><option value="concise">Concis</option><option value="detailed">Détaillé</option></select><p>Préférence enregistrée localement ; elle n'est pas encore appliquée aux réponses du modèle.</p></div></div>}
-            {settingsPage === 'companion' && <div className="settings-detail"><div className="settings-feature-card"><strong>Compagnon Hiera</strong><p>Les animations de compagnon ne sont pas encore intégrées à cette version.</p><label className="settings-check"><input type="checkbox" checked={!!settingsValues.companionEnabled} onChange={(e) => updateSetting('companionEnabled',e.target.checked)} /> Enregistrer ma préférence de compagnon</label></div></div>}
-            {settingsPage === 'keyboard' && <div className="settings-detail"><div className="settings-feature-card"><strong>Envoi des messages</strong><label className="settings-check"><input type="checkbox" checked={settingsValues.enterToSend !== false} onChange={(e) => updateSetting('enterToSend',e.target.checked)} /> Entrée pour envoyer (Maj + Entrée pour nouvelle ligne)</label><p>Ce raccourci est appliqué à la zone de saisie.</p></div></div>}
+            {settingsPage === 'personalization' && <div className="settings-detail"><div className="settings-feature-card"><strong>Nom de l'assistant</strong><input className="settings-select" maxLength={40} value={settingsValues.assistantName || 'Hiera'} onChange={(e) => updateSetting('assistantName',e.target.value)} /><p>Le nom choisi est transmis au modèle pour les prochaines réponses.</p></div><div className="settings-feature-card"><strong>Style de réponse</strong><select className="settings-select" value={settingsValues.replyStyle || 'friendly'} onChange={(e) => updateSetting('replyStyle',e.target.value)}><option value="friendly">Naturel et amical</option><option value="concise">Concis</option><option value="detailed">Détaillé</option></select><p>Le style choisi s'applique aux prochaines réponses.</p></div></div>}
+            {settingsPage === 'companion' && <div className="settings-detail"><div className="settings-feature-card"><strong>Compagnon Hiera</strong><p>Le robot animé et ses animations ne sont pas encore intégrés à cette version. Cette rubrique restera informative jusqu'à ce que ces fonctions soient disponibles, plutôt que de proposer un interrupteur sans effet.</p></div></div>}
+
             {settingsPage === 'history' && <div className="settings-detail"><div className="settings-feature-card"><strong>Conversations enregistrées</strong><p>{conversations.length} conversation(s). Les conversations sont conservées dans ce navigateur.</p><button className="settings-primary-button" onClick={() => setShowArchived((v) => !v)}>{showArchived ? 'Afficher les conversations actives' : 'Afficher les conversations archivées'}</button></div>{conversations.filter((c) => !!c.archived === showArchived).map((c) => <div className="settings-feature-card" key={c.id}><strong>{c.title}</strong><p>{c.messages.length} message(s) · {new Date(c.updatedAt).toLocaleString('fr-FR')}</p><button className="settings-primary-button" onClick={() => openConversation(c)}>Ouvrir</button><button className="settings-text-link" onClick={() => archiveConversation(c.id)}>{c.archived ? 'Désarchiver' : 'Archiver'}</button><button className="settings-text-link" onClick={() => removeConversation(c.id)}>Supprimer</button></div>)}</div>}
             {settingsPage === 'storage' && <div className="settings-detail"><div className="settings-feature-card"><strong>Stockage local</strong><p>{conversations.length} conversation(s) enregistrée(s) dans ce navigateur.</p><button className="settings-primary-button" onClick={() => { if (window.confirm('Supprimer toutes les conversations enregistrées sur cet appareil ?')) { setConversations([]); setMessages([]); setCurrentConversationId(crypto.randomUUID()); } }}>Effacer les conversations locales</button></div><div className="settings-feature-card"><strong>Gestion des données</strong><p>Les préférences et conversations sont conservées dans le stockage local de ce navigateur.</p></div></div>}
             {settingsPage === 'plugins' && <div className="settings-detail"><div className="settings-feature-card"><strong>Plugins</strong><p>Le système de plugins n'est pas encore intégré à cette version de Hiera. Les services externes ne sont donc pas activables ici.</p></div></div>}
@@ -292,7 +355,7 @@ export default function App() {
               </div>
             </div>
             <form className="composer" onSubmit={sendMessage}>
-              <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && settingsValues.enterToSend !== false) { event.preventDefault(); (event.currentTarget.form as HTMLFormElement)?.requestSubmit(); } }} placeholder="Écris un message à Hiera…" rows={1} aria-label="Message à Hiera" disabled={busy} />
+              <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { const enterBehavior = settingsValues.enterBehavior || (settingsValues.enterToSend === false ? 'newline' : 'send'); if (event.key === "Enter" && !event.shiftKey && enterBehavior === 'send') { event.preventDefault(); (event.currentTarget.form as HTMLFormElement)?.requestSubmit(); } }} placeholder="Écris un message à Hiera…" rows={1} aria-label="Message à Hiera" disabled={busy} />
               {error && <p className="error-message" role="alert">{error}</p>}
               <div className="composer-footer"><span>Pose ta question à Hiera</span><button type="submit" disabled={!draft.trim() || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div>
             </form>
