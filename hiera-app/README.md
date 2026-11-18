@@ -19,7 +19,8 @@ npm install
 Copie `.env.example` vers `.env`, puis ajoute ta clé dans le fichier local :
 
 ```env
-OPENAI_API_KEY=ta_cle_api_ici
+Key_API_Hiera=ta_cle_api_ici
+HIERA_API_PORT=3001
 ```
 
 Démarre Hiera :
@@ -30,10 +31,23 @@ npm run dev
 
 Ouvre ensuite http://localhost:5173.
 
+## Utiliser le secret GitHub
+
+Le serveur accepte le nom exact `Key_API_Hiera` comme variable d'environnement. Il accepte aussi `OPENAI_API_KEY` pour rester compatible avec les installations existantes.
+
+Le secret GitHub Actions nommé `Key_API_Hiera` n'est pas transmis automatiquement à un serveur hébergé. Le workflow ou la plateforme d'hébergement doit explicitement l'injecter dans l'environnement du processus Node, par exemple dans un workflow GitHub Actions :
+
+```yaml
+env:
+  Key_API_Hiera: ${{ secrets.Key_API_Hiera }}
+```
+
+Cette configuration ne déploie pas à elle seule le serveur : il faut encore choisir une plateforme d'hébergement et lui transmettre le secret de façon sécurisée.
+
 ## Sécurité des clés
 
 - La clé API est lue uniquement par le serveur Node.
-- Ne mets jamais la clé dans `src/`, dans une variable `VITE_*`, dans GitHub ou dans un message.
+- Ne mets jamais la clé dans `src/`, dans une variable `VITE_*`, dans le code du dépôt ou dans un message.
 - Le fichier `.env` est ignoré par Git.
 - Ne déploie pas le serveur de développement tel quel sur Internet. Avant un déploiement public, ajouter authentification, limitation de débit, protection anti-abus et configuration HTTPS.
 
