@@ -94,7 +94,7 @@ export default function App() {
       } else script.addEventListener('load', renderGoogleButton, { once: true });
     }
     return () => { active = false; };
-  }, [googleClientId]);
+  }, [googleClientId, settingsOpen]);
 
   async function logoutGoogle() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -147,7 +147,7 @@ export default function App() {
         <div className="side-label">ESPACE</div>
         <button className={`side-link ${!settingsOpen ? "active" : ""}`} onClick={() => setSettingsOpen(false)}><span>◉</span><b>Conversation</b></button>
         <button className={`side-link ${settingsOpen ? "active" : ""}`} onClick={() => setSettingsOpen(true)}><span>⚙</span><b>Paramètres</b></button>
-        <div className="sidebar-account"><div className="account-status"><span className="status-dot" /> {googleUser ? "Google connecté" : "Compte Google"}</div>{googleUser ? <><div className="account-provider"><span className="google-g">G</span><span>{googleUser.email}</span></div><button className="account-action" onClick={logoutGoogle}>Déconnexion</button></> : <div className="google-login" ref={googleButtonRef} />}</div>
+        <div className="sidebar-account"><div className="account-status"><span className="status-dot" /> {googleUser ? "Google connecté" : "Compte non connecté"}</div><div className="account-provider"><span className="google-g">G</span><span>{googleUser ? googleUser.email : "Gérer dans Paramètres"}</span></div></div>
       </aside>
 
       <section className="workspace">
@@ -172,19 +172,34 @@ export default function App() {
                 <option value="groq:openai/gpt-oss-120b">GPT-OSS 120B (Groq)</option>
               </select>
             </div>
-            <div className="settings-card">
-              <div><h2>Compte Google</h2><p>{googleUser ? `Connecté en tant que ${googleUser.email}` : 'Aucun compte Google connecté.'}</p></div>
-              {googleUser && <button className="settings-action" onClick={logoutGoogle}>Se déconnecter</button>}
+            <div className="settings-card account-settings-card">
+              <div className="settings-card-copy"><h2>Compte Google</h2><p>Utilise ton compte Google pour te connecter à Hiera et gérer ta session.</p></div>
+              <div className="google-settings-control">
+                {googleUser ? <><div className="google-account-identity"><span className="google-g">G</span><span><strong>{googleUser.name || "Compte Google"}</strong><small>{googleUser.email}</small></span></div><button className="settings-action" onClick={logoutGoogle}>Se déconnecter</button></> : <><div className="google-login settings-google-login" ref={googleButtonRef} />{!googleClientId && <small className="settings-help">La connexion Google doit être configurée sur Render.</small>}</>}
+                {authError && <small className="settings-error" role="alert">{authError}</small>}
+              </div>
             </div>
             <div className="settings-card integrations-card">
-              <div><h2>Applications et services</h2><p>Les connexions seront ajoutées progressivement. Chaque service demandera une autorisation sécurisée.</p></div>
-              <div className="integration-list"><span>Google Agenda · À venir</span><span>Gmail · À venir</span><span>GitHub · À venir</span><span>Gemini · À étudier</span><span>Instagram et TikTok · À étudier</span></div>
+              <div className="settings-card-copy"><h2>Applications et services</h2><p>Découvre les services que tu pourras relier à Hiera. Chaque connexion demandera ton autorisation.</p></div>
+              <div className="integration-list">
+                <div className="integration-item"><span className="integration-icon google-g">G</span><span><strong>Google Agenda</strong><small>Accès au calendrier</small></span><em>À connecter</em></div>
+                <div className="integration-item"><span className="integration-icon google-g">G</span><span><strong>Gmail</strong><small>Lire et organiser les e-mails</small></span><em>À connecter</em></div>
+                <div className="integration-item"><span className="integration-icon">⌘</span><span><strong>GitHub</strong><small>Dépôts et projets</small></span><em>À connecter</em></div>
+                <div className="integration-item"><span className="integration-icon">✦</span><span><strong>Gemini</strong><small>Service IA externe</small></span><em>À étudier</em></div>
+                <div className="integration-item"><span className="integration-icon">◎</span><span><strong>Instagram et TikTok</strong><small>Réseaux sociaux</small></span><em>À étudier</em></div>
+              </div>
             </div>
-            <div className="settings-card">
-              <div><h2>Confidentialité et sécurité</h2><p>Évite de partager des mots de passe, des clés API ou des informations personnelles dans tes conversations.</p></div>
-              <span className="settings-note">Conseil de sécurité</span>
+            
+          <div className="settings-card privacy-settings-card">
+              <div className="settings-card-copy"><h2>Confidentialité et sécurité</h2><p>Voici les protections et autorisations actuellement disponibles dans Hiera.</p></div>
+              <div className="privacy-list">
+                <div><strong>Session Google</strong><span>{googleUser ? "Connectée" : "Aucune session Google active"}</span></div>
+                <div><strong>Déconnexion</strong><span>Tu peux fermer ta session depuis la section Compte Google.</span></div>
+                <div><strong>Clés et mots de passe</strong><span>Ne les saisis jamais dans une conversation. Garde les clés API dans les variables privées de Render.</span></div>
+                <div><strong>Autorisations des applications</strong><span>Aucun accès à Gmail, Agenda ou aux réseaux sociaux n'est accordé pour le moment.</span></div>
+              </div>
             </div>
-          </section>
+            </section>
         ) : (
           <>
             <div className="conversation">
