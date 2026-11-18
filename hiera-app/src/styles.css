@@ -267,3 +267,59 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 .security-logout{margin-top:14px;}
 @media(max-width:900px){.settings-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:520px){.settings-shortcuts{grid-template-columns:1fr;}.settings-shortcuts button{min-height:0;}}
+
+
+/* Hiera settings: clean landing page with dedicated sub-pages */
+.settings-redesign{max-width:980px;padding:34px 8px 55px}
+.settings-redesign .settings-back{display:inline-flex;align-items:center;gap:8px;margin:0 0 22px;padding:10px 14px;border:1px solid #7651a366;border-radius:11px;background:#1a1230;color:#e9ddfa;font-size:12px;cursor:pointer}
+.settings-redesign .settings-back:hover{border-color:#bd8aff;background:#291747}
+.settings-home-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin-top:28px}
+.settings-home-button{min-height:170px;display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:22px;border:1px solid #7651a366;border-radius:18px;background:linear-gradient(145deg,#21143d,#100b27);color:#f4edff;text-align:left;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s}
+.settings-home-button:hover{transform:translateY(-3px);border-color:#bd8aff;box-shadow:0 14px 34px #09031588}
+.settings-home-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:#7b42bd33;color:#d4b5ff;font-size:24px;font-weight:700}
+.settings-home-icon img{width:25px;height:25px}
+.settings-home-button strong{font:700 16px Manrope,sans-serif}
+.settings-home-button small{font-size:12px;color:#b7a9c9;line-height:1.5}
+.settings-home-button>b{margin-top:auto;color:#c89cff;font-size:12px}
+.settings-detail{display:grid;gap:13px;margin-top:20px;max-width:760px}
+.settings-description{font-size:13px;line-height:1.65;color:#b9accb;margin:0 0 5px}
+.settings-feature-card{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:20px;border:1px solid #7651a355;border-radius:16px;background:linear-gradient(145deg,#1d1535dd,#100c25dd)}
+.settings-feature-card>strong{font:700 14px Manrope,sans-serif;color:#f2eaff}
+.settings-feature-card p{margin:0;color:#b9accb;font-size:12px;line-height:1.65}
+.settings-feature-heading{display:flex;align-items:center;gap:13px}
+.settings-feature-heading>div{display:flex;flex-direction:column;gap:4px}
+.settings-feature-heading strong{font-size:14px;color:#f2eaff}
+.settings-feature-heading small{font-size:11px;color:#b9accb}
+.security-feature-icon{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:#7b42bd33;color:#d4b5ff;font-size:22px}
+.settings-account-line{display:flex;flex-direction:column;gap:4px;padding:12px 0;border-top:1px solid #ffffff15;border-bottom:1px solid #ffffff15;width:100%}
+.settings-account-line strong{font-size:13px;color:#f2eaff}
+.settings-account-line span{font-size:12px;color:#b9accb}
+.settings-primary-button{padding:11px 16px;border:1px solid #9b64df;border-radius:11px;background:linear-gradient(110deg,#7828dc,#4213a0);color:#fff;font-size:12px;font-weight:600;cursor:pointer}
+.settings-primary-button:hover{filter:brightness(1.13)}
+.settings-warning{font-size:11px;color:#f0b0b9;margin:0}
+.settings-text-link{font-size:12px;color:#cba4ff;text-decoration:none}
+.settings-text-link:hover{text-decoration:underline}
+.settings-static-value{font-size:12px;color:#cba4ff}
+.app-search-box{display:flex;align-items:center;gap:10px;width:100%;max-width:560px;padding:0 15px;border:1px solid #7651a366;border-radius:13px;background:#100b26;color:#c9b4e5}
+.app-search-box>span{font-size:24px}
+.app-search-box input{width:100%;height:48px;border:0;outline:0;background:transparent;color:#fff;font-size:13px}
+.app-search-box input::placeholder{color:#8e80a5}
+.application-directory{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.application-card{display:flex;align-items:center;gap:12px;min-width:0;padding:14px;border:1px solid #7651a344;border-radius:14px;background:#ffffff06}
+.application-brand-logo{width:34px;height:34px;object-fit:contain;flex:none}
+.application-card-copy{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.application-card-copy strong{font-size:12px;color:#f2eaff}
+.application-card-copy small{font-size:10px;color:#b9accb;line-height:1.35}
+.application-card-copy em{font-style:normal;font-size:9px;color:#cba4ff}
+.application-connect-button{padding:8px 10px;border:1px solid #7651a355;border-radius:9px;background:#ffffff08;color:#b9accb;font-size:10px;white-space:nowrap;cursor:not-allowed}
+.application-connect-button:disabled{opacity:.65}
+.settings-empty{grid-column:1/-1;color:#b9accb;font-size:13px;padding:20px}
+:root[data-theme="light"] .settings-redesign .settings-back{background:#fff;color:#39244f}
+:root[data-theme="light"] .settings-home-button,:root[data-theme="light"] .settings-feature-card{background:#fff;border-color:#e0d0f2;color:#39244f}
+:root[data-theme="light"] .settings-home-button strong,:root[data-theme="light"] .settings-feature-card>strong,:root[data-theme="light"] .settings-feature-heading strong,:root[data-theme="light"] .settings-account-line strong,:root[data-theme="light"] .application-card-copy strong{color:#39244f}
+:root[data-theme="light"] .settings-home-button small,:root[data-theme="light"] .settings-description,:root[data-theme="light"] .settings-feature-card p,:root[data-theme="light"] .settings-feature-heading small,:root[data-theme="light"] .settings-account-line span,:root[data-theme="light"] .application-card-copy small{color:#6d6078}
+:root[data-theme="light"] .app-search-box{background:#fff;color:#5e426f}
+:root[data-theme="light"] .app-search-box input{color:#241b30}
+:root[data-theme="light"] .application-card{background:#fff;border-color:#e0d0f2}
+:root[data-theme="light"] .application-connect-button{color:#5e426f;border-color:#d8c4f2}
+@media(max-width:720px){.settings-home-grid,.application-directory{grid-template-columns:1fr}.settings-home-button{min-height:140px;padding:18px}.application-card{padding:11px}.settings-redesign{padding:20px 0 35px}}
