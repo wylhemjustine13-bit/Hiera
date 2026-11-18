@@ -37,7 +37,7 @@ export default function App() {
   const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
   const [authError, setAuthError] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => !window.matchMedia("(max-width: 760px)").matches);
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
