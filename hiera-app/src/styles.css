@@ -116,3 +116,70 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
   .shell{display:block!important}
   .shell>.sidebar{display:flex!important;min-width:0;width:100%;position:relative;visibility:visible!important;opacity:1!important}
 }
+
+
+/* Responsive, collapsible Hiera workspace */
+.shell{height:100dvh;min-height:0;grid-template-columns:258px minmax(0,1fr);overflow:hidden}
+.sidebar{height:100dvh;min-height:0;overflow:hidden;transition:width .22s ease,padding .22s ease}
+.brand{width:100%;border:0;background:transparent;color:#fff;text-align:left;cursor:pointer}
+.brand:hover{background:#ffffff0b}
+.side-link b{font-weight:500}
+.sidebar-account{flex:none}
+.account-action{display:block;width:100%;margin-top:10px;padding:7px 9px;border:1px solid #7651a3;border-radius:9px;background:#21143c;color:#eee5ff;font-size:11px;cursor:pointer}
+.workspace{height:100dvh;min-height:0;overflow:hidden;padding-bottom:12px}
+.topbar{height:54px;justify-content:flex-start;gap:12px}
+.mobile-menu-button{display:flex;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid #ffffff22;border-radius:11px;background:#21143c;color:white;cursor:pointer}
+.mobile-menu-button .atom-logo{width:25px;height:25px}
+.topbar-title{font-size:13px;color:#bba9d9}
+.sidebar-collapsed{grid-template-columns:0 minmax(0,1fr)}
+.sidebar-collapsed>.sidebar{width:0;min-width:0;padding-left:0;padding-right:0;border:0;opacity:0;pointer-events:none;overflow:hidden}
+.sidebar-collapsed .workspace{grid-column:2}
+.conversation{min-height:0;max-height:none;overflow-y:auto;flex:1}
+.welcome.compact-welcome{padding:clamp(16px,4vh,38px) 0 10px}
+.compact-welcome h1{font-size:clamp(30px,4vw,48px)}
+.compact-welcome .subtitle{font-size:14px;margin-top:8px}
+.messages{padding:12px 0 16px}
+.composer{flex:none;margin-top:8px}
+.disclaimer{flex:none;margin:6px 0 0}
+.google-login{width:100%;min-width:0;justify-content:flex-start;overflow:hidden}
+.google-login iframe{max-width:100%}
+.sidebar-account .account-provider{min-width:0}
+.settings-page{max-height:calc(100dvh - 70px);overflow-y:auto;padding:28px 0 35px}
+.integration-list{display:flex;flex-wrap:wrap;gap:8px;max-width:440px}
+.integration-list span{border:1px solid #7651a3;border-radius:20px;padding:7px 10px;color:#d7c5f2;font-size:11px}
+:root[data-theme="light"] .mobile-menu-button{background:#fff;color:#39244f;border-color:#241b3022}
+:root[data-theme="light"] .topbar-title{color:#5e526a}
+:root[data-theme="light"] .account-action{background:#fff;color:#39244f}
+:root[data-theme="light"] .integration-list span{color:#5e426f;border-color:#d8c4f2}
+@media(max-width:760px){
+  .shell{display:grid!important;grid-template-columns:minmax(0,1fr)!important;position:relative}
+  .shell>.sidebar{position:absolute;left:0;top:0;bottom:0;width:min(82vw,290px);height:100dvh;min-width:0;padding:22px 16px;box-shadow:18px 0 45px #0008;transition:transform .22s ease,opacity .22s ease;z-index:20}
+  .sidebar-collapsed>.sidebar{width:min(82vw,290px);min-width:0;padding:22px 16px;transform:translateX(-105%);opacity:0;pointer-events:none}
+  .sidebar-collapsed .workspace{grid-column:1}
+  .workspace{grid-column:1;padding:0 12px 10px;height:100dvh}
+  .topbar{height:48px}
+  .new-chat{font-size:12px}
+  .side-link{width:100%;justify-content:flex-start;font-size:13px;padding:12px}
+  .side-link span{display:inline-block}
+  .side-link b{display:inline}
+  .sidebar-account{display:block}
+  .welcome.compact-welcome{padding:18px 0 8px}
+  .compact-welcome h1{font-size:34px}
+  .compact-welcome .subtitle{font-size:12px}
+  .conversation{max-height:none}
+  .composer{padding:10px 12px;border-radius:16px}
+  .composer textarea{font-size:14px;min-height:28px}
+  .composer-footer button{width:36px;height:36px}
+  .disclaimer{font-size:9px}
+  .settings-page{max-height:calc(100dvh - 60px);padding:18px 0 25px}
+}
+@media(max-height:700px) and (min-width:761px){
+  .welcome.compact-welcome{padding:10px 0 4px}
+  .compact-welcome h1{font-size:32px}
+  .compact-welcome .subtitle{margin-top:4px}
+  .messages{padding:5px 0 8px;gap:8px}
+  .composer{padding:9px 13px}
+  .sidebar{padding-top:16px;padding-bottom:14px}
+  .brand{padding-bottom:18px}
+  .side-label{margin-top:18px}
+}
