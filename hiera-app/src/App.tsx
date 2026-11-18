@@ -14,8 +14,8 @@ declare global {
   }
 }
 type GoogleUser = { email: string; name: string; picture: string };
-
 type Message = { role: 'assistant' | 'user'; content: string };
+
 function AtomLogo() {
   return <svg className="atom-logo" viewBox="0 0 64 64" aria-hidden="true">
     <g fill="none" stroke="currentColor" strokeWidth="2.7">
@@ -40,7 +40,14 @@ export default function App() {
   const [googleClientId, setGoogleClientId] = useState('');
   const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
   const [authError, setAuthError] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('hiera-theme') as 'dark' | 'light') || 'dark');
   const googleButtonRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('hiera-theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     let active = true;
@@ -108,19 +115,15 @@ export default function App() {
     event.preventDefault();
     const content = draft.trim();
     if (!content || busy) return;
-
     const nextMessages: Message[] = [...messages, { role: 'user', content }];
     setMessages(nextMessages);
     setDraft('');
     setError('');
     setBusy(true);
-
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           provider: 'groq',
           model,
@@ -129,9 +132,7 @@ export default function App() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'La demande a échoué.');
-      if (typeof data.reply !== 'string' || !data.reply.trim()) {
-        throw new Error("Le service IA n'a pas renvoyé de réponse.");
-      }
+      if (typeof data.reply !== 'string' || !data.reply.trim()) throw new Error("Le service IA n'a pas renvoyé de réponse.");
       setMessages((current) => [...current, { role: 'assistant', content: data.reply }]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de joindre Hiera.');
@@ -144,6 +145,7 @@ export default function App() {
     if (busy) return;
     setMessages([]);
     setError('');
+    setSettingsOpen(false);
   }
 
   return (
@@ -152,51 +154,85 @@ export default function App() {
         <div className="brand"><AtomLogo /><span>hiera</span></div>
         <button className="new-chat" onClick={newConversation} disabled={busy}>＋ Nouvelle conversation</button>
         <div className="side-label">ESPACE</div>
-        <div className="side-link active"><span>◉</span> Conversation</div>
-        <div className="side-link"><span>◇</span> Bibliothèque <small>Bientôt</small></div>
-        <div className="side-link"><span>⚙</span> Paramètres <small>Bientôt</small></div>
-        <div className="sidebar-bottom"><span className="status-dot" /> Projet indépendant <span className="version">0.3.0</span></div>
+        <button className={`side-link ${!settingsOpen ? 'active' : ''}`} onClick={() => setSettingsOpen(false)}><span>◉</span> Conversation</button>
+        <button className={`side-link ${settingsOpen ? 'active' : ''}`} onClick={() => setSettingsOpen(true)}><span>⚙</span> Paramètres</button>
+        <div className="sidebar-bottom"><span className="status-dot" /> Projet indépendant <span className="version">0.4.0</span></div>
       </aside>
 
       <section className="workspace">
         <header className="topbar">
           <div className="mobile-brand"><AtomLogo /><span>hiera</span></div>
-          <label className="model-select-label" htmlFor="model-select">Modèle</label>
-          <select id="model-select" className="model-select" value={model} onChange={(event) => setModel(event.target.value)} disabled={busy}>
-            <optgroup label="Groq">
-              <option value="groq:openai/gpt-oss-20b">GPT-OSS 20B</option>
-              <option value="groq:openai/gpt-oss-120b">GPT-OSS 120B</option>
-            </optgroup>
-          </select>
-          <span className="model-pill"><span className="status-dot" /> Groq</span>
+          {!settingsOpen && <>
+            <label className="model-select-label" htmlFor="model-select">Modèle</label>
+            <select id="model-select" className="model-select" value={model} onChange={(event) => setModel(event.target.value)} disabled={busy}>
+              <optgroup label="Groq">
+                <option value="groq:openai/gpt-oss-20b">GPT-OSS 20B</option>
+                <option value="groq:openai/gpt-oss-120b">GPT-OSS 120B</option>
+              </optgroup>
+            </select>
+            <span className="model-pill"><span className="status-dot" /> Groq</span>
+          </>}
           {googleUser ? <button className="google-user" onClick={logoutGoogle} title="Se déconnecter">{googleUser.picture && <img src={googleUser.picture} alt="" />} {googleUser.name || googleUser.email} · Déconnexion</button> : <div className="google-login" ref={googleButtonRef} />}
           {!googleUser && <button className="avatar" aria-label="Hiera">H</button>}
         </header>
-        <div className="conversation">
-          {authError && <p className="auth-error" role="alert">{authError}</p>}
-          {!googleClientId && <p className="auth-hint">Connexion Google : configuration à terminer sur Render.</p>}
-          <div className="welcome">
-            <div className="atom" aria-hidden="true"><span className="nucleus" /><i className="orbit orbit-one" /><i className="orbit orbit-two" /><i className="orbit orbit-three" /></div>
-            <p className="eyebrow">TON ESPACE IA</p>
-            <h1>Bonjour, bienvenue<br /><em>dans Hiera.</em></h1>
-            <p className="subtitle">Un nouvel espace pour réfléchir, apprendre et créer.</p>
-          </div>
-          <div className="messages" aria-live="polite">
-            {messages.map((message, index) => (
-              <article className={`message ${message.role}`} key={index}>
-                {message.role === 'assistant' && <span className="message-mark">✳</span>}
-                <p>{message.content}</p>
-              </article>
-            ))}
-            {busy && <article className="message assistant"><span className="message-mark">✳</span><p className="typing">Hiera réfléchit…</p></article>}
-          </div>
-        </div>
-        <form className="composer" onSubmit={sendMessage}>
-          <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Écris un message à Hiera…" rows={1} aria-label="Message à Hiera" disabled={busy} />
-          {error && <p className="error-message" role="alert">{error}</p>}
-          <div className="composer-footer"><span>Le fournisseur et le modèle sélectionnés génèrent les réponses.</span><button type="submit" disabled={!draft.trim() || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div>
-        </form>
-        <p className="disclaimer">Ne partage jamais de données personnelles ou confidentielles dans une conversation.</p>
+
+        {settingsOpen ? (
+          <section className="settings-page">
+            <p className="eyebrow">PERSONNALISATION</p>
+            <h1>Paramètres</h1>
+            <p className="settings-intro">Configure ton espace Hiera comme tu le souhaites.</p>
+            <div className="settings-card">
+              <div><h2>Apparence</h2><p>Choisis le thème de ton interface.</p></div>
+              <div className="setting-control">
+                <button className={`choice-button ${theme === 'dark' ? 'selected' : ''}`} onClick={() => setTheme('dark')}>🌙 Sombre</button>
+                <button className={`choice-button ${theme === 'light' ? 'selected' : ''}`} onClick={() => setTheme('light')}>☀️ Clair</button>
+              </div>
+            </div>
+            <div className="settings-card">
+              <div><h2>Modèle d'intelligence artificielle</h2><p>Choisis le modèle utilisé pour tes prochaines conversations.</p></div>
+              <select className="settings-select" value={model} onChange={(event) => setModel(event.target.value)}>
+                <option value="groq:openai/gpt-oss-20b">GPT-OSS 20B (Groq)</option>
+                <option value="groq:openai/gpt-oss-120b">GPT-OSS 120B (Groq)</option>
+              </select>
+            </div>
+            <div className="settings-card">
+              <div><h2>Compte Google</h2><p>{googleUser ? `Connecté en tant que ${googleUser.email}` : 'Aucun compte Google connecté.'}</p></div>
+              {googleUser ? <button className="settings-action" onClick={logoutGoogle}>Se déconnecter</button> : <div className="settings-google" ref={googleButtonRef} />}
+            </div>
+            <div className="settings-card">
+              <div><h2>Confidentialité et sécurité</h2><p>Évite de partager des mots de passe, des clés API ou des informations personnelles dans tes conversations.</p></div>
+              <span className="settings-note">Conseil de sécurité</span>
+            </div>
+          </section>
+        ) : (
+          <>
+            <div className="conversation">
+              {authError && <p className="auth-error" role="alert">{authError}</p>}
+              {!googleClientId && <p className="auth-hint">Connexion Google : configuration à terminer sur Render.</p>}
+              <div className="welcome">
+                <div className="atom" aria-hidden="true"><span className="nucleus" /><i className="orbit orbit-one" /><i className="orbit orbit-two" /><i className="orbit orbit-three" /></div>
+                <p className="eyebrow">TON ESPACE IA</p>
+                <h1>Bonjour, bienvenue<br /><em>dans Hiera.</em></h1>
+                <p className="subtitle">Un nouvel espace pour réfléchir, apprendre et créer.</p>
+              </div>
+              <div className="messages" aria-live="polite">
+                {messages.map((message, index) => (
+                  <article className={`message ${message.role}`} key={index}>
+                    {message.role === 'assistant' && <span className="message-mark">✳</span>}
+                    <p>{message.content}</p>
+                  </article>
+                ))}
+                {busy && <article className="message assistant"><span className="message-mark">✳</span><p className="typing">Hiera réfléchit…</p></article>}
+              </div>
+            </div>
+            <form className="composer" onSubmit={sendMessage}>
+              <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Écris un message à Hiera…" rows={1} aria-label="Message à Hiera" disabled={busy} />
+              {error && <p className="error-message" role="alert">{error}</p>}
+              <div className="composer-footer"><span>Le fournisseur et le modèle sélectionnés génèrent les réponses.</span><button type="submit" disabled={!draft.trim() || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div>
+            </form>
+            <p className="disclaimer">Ne partage jamais de données personnelles ou confidentielles dans une conversation.</p>
+          </>
+        )}
       </section>
     </main>
   );
