@@ -10,6 +10,7 @@ export default function App() {
   const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [draft, setDraft] = useState('');
   const [model, setModel] = useState('gpt-4.1-mini');
+  const [accessCode, setAccessCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -27,7 +28,10 @@ export default function App() {
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-hiera-access-code': accessCode,
+        },
         body: JSON.stringify({
           model,
           messages: nextMessages.map(({ role, content: text }) => ({ role, content: text })),
@@ -61,12 +65,14 @@ export default function App() {
         <div className="side-link active"><span>◉</span> Conversation</div>
         <div className="side-link"><span>◇</span> Bibliothèque <small>Bientôt</small></div>
         <div className="side-link"><span>⚙</span> Paramètres <small>Bientôt</small></div>
-        <div className="sidebar-bottom"><span className="status-dot" /> Projet indépendant <span className="version">0.2.0</span></div>
+        <div className="sidebar-bottom"><span className="status-dot" /> Projet indépendant <span className="version">0.3.0</span></div>
       </aside>
 
       <section className="workspace">
         <header className="topbar">
           <div className="mobile-brand">✳ hiera</div>
+          <label className="access-code-label" htmlFor="access-code">Code privé</label>
+          <input id="access-code" className="access-code-input" type="password" autoComplete="off" value={accessCode} onChange={(event) => setAccessCode(event.target.value)} placeholder="Code d'accès" aria-label="Code d'accès privé Hiera" />
           <label className="model-select-label" htmlFor="model-select">Modèle</label>
           <select id="model-select" className="model-select" value={model} onChange={(event) => setModel(event.target.value)} disabled={busy}>
             <option value="gpt-4.1-mini">GPT-4.1 mini</option>
