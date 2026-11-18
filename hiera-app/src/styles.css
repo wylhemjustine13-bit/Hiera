@@ -371,3 +371,34 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
  .settings-feature-card{padding:11px 12px}
  .application-card{padding:9px}
 }
+
+
+/* Hiera settings catalogue, compact cards and conversation history */
+.settings-home-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;max-width:900px;margin-top:18px}
+.settings-home-button{min-height:92px;padding:12px 14px;gap:5px;border-radius:11px}
+.settings-home-icon{width:27px;height:27px;border-radius:8px;font-size:16px}
+.settings-home-button strong{font-size:11px}
+.settings-home-button small{font-size:9px;line-height:1.35}
+.settings-home-button>b{font-size:9px}
+.settings-feature-card{padding:13px 15px;gap:9px;border-radius:11px}
+.settings-feature-card>strong,.settings-feature-heading strong{font-size:12px}
+.settings-feature-card p,.settings-feature-heading small{font-size:10px;line-height:1.5}
+.settings-primary-button{padding:7px 11px;font-size:10px;border-radius:8px}
+.settings-check{display:flex;align-items:center;gap:8px;color:#cbbce0;font-size:11px}
+.settings-check input{accent-color:#9858e8}
+.settings-text-link{border:0;background:transparent;padding:3px 0;cursor:pointer}
+.history-heading{margin:23px 9px 8px;color:#9182af;font-size:9px;letter-spacing:1.7px}
+.conversation-history{display:flex;flex-direction:column;gap:3px;min-height:0;overflow-y:auto;max-height:42vh}
+.history-row{display:flex;align-items:center;gap:4px;min-width:0}
+.history-open{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;border:0;border-radius:8px;padding:8px 9px;background:transparent;color:#c9bfdf;font-size:10px;cursor:pointer}
+.history-open:hover,.history-action:hover{background:#ffffff10;color:#fff}
+.history-action{flex:none;border:0;border-radius:7px;padding:6px;background:transparent;color:#9f8dbd;cursor:pointer;font-size:10px}
+.history-toggle{margin-top:7px;padding:7px 9px;border:1px solid #7651a344;border-radius:8px;background:#ffffff08;color:#bfa9df;font-size:10px;cursor:pointer;text-align:left}
+.sidebar{min-height:0}
+.sidebar-account{margin-top:auto}
+:root[data-theme="light"] .history-open{color:#5e526a}
+:root[data-theme="light"] .history-open:hover,:root[data-theme="light"] .history-action:hover{background:#eee5f8;color:#39244f}
+:root[data-theme="light"] .settings-check{color:#5e526a}
+@media(max-width:900px){.settings-home-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.conversation-history,.history-heading,.history-toggle{display:none}}
+@media(max-width:520px){.settings-home-grid{grid-template-columns:1fr}.settings-home-button{min-height:74px}}
