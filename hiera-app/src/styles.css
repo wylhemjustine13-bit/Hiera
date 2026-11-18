@@ -402,3 +402,6 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 @media(max-width:900px){.settings-home-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.conversation-history,.history-heading,.history-toggle{display:none}}
 @media(max-width:520px){.settings-home-grid{grid-template-columns:1fr}.settings-home-button{min-height:74px}}
+
+.sidebar-dismiss-zone{position:fixed;z-index:4;left:258px;top:0;bottom:0;width:20px;border:0;background:transparent;cursor:pointer}
+@media(max-width:760px){.sidebar-dismiss-zone{left:min(82vw,290px);right:0;width:auto;background:#05030a55;z-index:19}}
