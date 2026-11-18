@@ -1,30 +1,54 @@
-# Hiera — application indépendante
+# Hiera — assistant IA indépendant
 
-Hiera est un nouveau projet d'assistant IA avec une identité visuelle et une interface originales.
+Hiera est une application indépendante avec sa propre interface et son propre serveur de connexion aux modèles IA.
 
-## Démarrer en local
+## Prérequis
 
-Prérequis : Node.js 20+ et npm.
+- Node.js 20 ou plus récent
+- npm
+- Une clé API OpenAI avec accès API et une facturation configurée auprès du fournisseur
+
+## Installation locale
+
+Depuis le dossier `hiera-app` :
 
 ```bash
-cd hiera-app
 npm install
+```
+
+Copie `.env.example` vers `.env`, puis ajoute ta clé dans le fichier local :
+
+```env
+OPENAI_API_KEY=ta_cle_api_ici
+```
+
+Démarre Hiera :
+
+```bash
 npm run dev
 ```
 
-Puis ouvrir l'adresse locale affichée par Vite.
+Ouvre ensuite http://localhost:5173.
 
-## État actuel
+## Sécurité des clés
+
+- La clé API est lue uniquement par le serveur Node.
+- Ne mets jamais la clé dans `src/`, dans une variable `VITE_*`, dans GitHub ou dans un message.
+- Le fichier `.env` est ignoré par Git.
+- Ne déploie pas le serveur de développement tel quel sur Internet. Avant un déploiement public, ajouter authentification, limitation de débit, protection anti-abus et configuration HTTPS.
+
+## Fonctionnalités
 
 - Interface de conversation responsive.
-- Identité visuelle violette et atome flottant animé visuellement (prototype statique).
-- Saisie et affichage local des messages.
-- Aucune réponse IA fictive : le raccordement à un fournisseur sera ajouté dans une étape séparée.
+- Identité visuelle violette avec atome flottant.
+- Appels réels à l'API OpenAI via le serveur.
+- Choix entre GPT-4.1 mini et GPT-4.1.
+- Affichage de l'état de génération et des erreurs.
 
-## Architecture prévue
+## Architecture
 
 - `src/` : interface React.
-- `server/` (à créer) : futur serveur sécurisé pour les appels aux fournisseurs IA.
-- Les clés API devront rester côté serveur ou dans un stockage sécurisé, jamais dans le code public du navigateur.
+- `server/index.mjs` : proxy serveur sécurisé pour les appels API.
+- `.env.example` : modèle de configuration, sans secret.
 
-Ce dossier est développé indépendamment et ne réutilise pas les composants internes de LobeHub.
+Les réponses de l'assistant proviennent de l'API configurée ; Hiera ne fabrique pas de réponses de remplacement en cas d'échec.
