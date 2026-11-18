@@ -49,3 +49,10 @@ h1 em{font-style:normal;color:#c7a1ff}
 .composer-footer button:disabled{opacity:.4;cursor:not-allowed}
 .disclaimer{text-align:center;color:#746b7e;font-size:10px;margin:11px 0 0}
 @media(max-width:760px){.shell{display:block}.sidebar{display:none}.workspace{padding:0 12px 18px}.topbar{height:62px;justify-content:flex-end;gap:7px}.mobile-brand{display:flex;font-size:18px}.model-select-label{display:none}.model-select{min-width:82px;max-width:105px;padding:7px 6px;font-size:10px}.model-pill{padding:7px 8px;font-size:10px}.avatar{width:29px;height:29px}.welcome{padding:45px 0 15px}.atom{transform:scale(.9);margin-bottom:10px}.message{max-width:96%}.composer-footer span{max-width:80%;line-height:1.4}}
+
+.google-login{min-width:180px;display:flex;justify-content:flex-end}
+.google-user{display:flex;align-items:center;gap:7px;border:1px solid #6c5581;background:#211a2b;color:#eee5f7;border-radius:22px;padding:5px 10px;font-size:10px;cursor:pointer;max-width:220px}
+.google-user img{width:24px;height:24px;border-radius:50%}
+.auth-error,.auth-hint{max-width:760px;width:100%;margin:12px auto 0;color:#e8a6b2;font-size:12px}
+.auth-hint{color:#b9a9c8}
+@media(max-width:760px){.google-login{min-width:0;max-width:145px;overflow:hidden}.google-login iframe{max-width:145px}.google-user{max-width:130px;font-size:9px;padding:4px 6px}}
