@@ -17,9 +17,7 @@ if (existsSync(envPath)) {
 const PORT = Number(process.env.PORT || process.env.HIERA_API_PORT || 3001);
 const MAX_BODY = 1_000_000;
 const groqModels = new Set(['openai/gpt-oss-20b', 'openai/gpt-oss-120b']);
-const xaiModels = new Set(['grok-4.7']);
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const XAI_API_KEY = process.env.XAI_API_KEY;
 const ACCESS_PASSWORD = process.env.HIERA_ACCESS_PASSWORD;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const HIERA_SESSION_SECRET = process.env.HIERA_SESSION_SECRET;
@@ -183,14 +181,10 @@ const server = createServer(async (req, res) => {
         if (raw.length > MAX_BODY) return send(res, 413, { error: 'Message trop volumineux.' });
       }
       const body = JSON.parse(raw || '{}');
-      const provider = body.provider === 'xai' ? 'xai' : 'groq';
-      const allowedModels = provider === 'xai' ? xaiModels : groqModels;
-      const defaultModel = provider === 'xai' ? 'grok-4.7' : 'openai/gpt-oss-20b';
-      const model = allowedModels.has(body.model) ? body.model : defaultModel;
-      const apiKey = provider === 'xai' ? XAI_API_KEY : GROQ_API_KEY;
+      const model = groqModels.has(body.model) ? body.model : 'openai/gpt-oss-20b';
+      const apiKey = GROQ_API_KEY;
       if (!apiKey) {
-        const keyName = provider === 'xai' ? 'XAI_API_KEY' : 'GROQ_API_KEY';
-        return send(res, 503, { error: `Clé ${provider === 'xai' ? 'xAI' : 'Groq'} manquante. Configure ${keyName} dans Render.` });
+        return send(res, 503, { error: 'Clé Groq manquante. Configure GROQ_API_KEY dans Render.' });
       }
       if (!Array.isArray(body.messages) || body.messages.length === 0 || body.messages.length > 60) {
         return send(res, 400, { error: 'Historique de conversation invalide.' });
@@ -205,10 +199,7 @@ const server = createServer(async (req, res) => {
         return { role: message.role, content: message.content.slice(0, 20000) };
       })];
 
-      const apiUrl = provider === 'xai'
-        ? 'https://api.x.ai/v1/chat/completions'
-        : 'https://api.groq.com/openai/v1/chat/completions';
-      const upstream = await fetch(apiUrl, {
+      const upstream = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey}`,
