@@ -122,8 +122,8 @@ export default function App() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          provider: model.startsWith('xai:') ? 'xai' : 'groq',
-          model: model.split(':').slice(1).join(':'),
+          provider: 'groq',
+          model,
           messages: nextMessages.map(({ role, content: text }) => ({ role, content: text })),
         }),
       });
@@ -167,11 +167,8 @@ export default function App() {
               <option value="groq:openai/gpt-oss-20b">GPT-OSS 20B</option>
               <option value="groq:openai/gpt-oss-120b">GPT-OSS 120B</option>
             </optgroup>
-            <optgroup label="Grok (xAI)">
-              <option value="xai:grok-4.7">Grok 4.7</option>
-            </optgroup>
           </select>
-          <span className="model-pill"><span className="status-dot" /> {model.startsWith('xai:') ? 'xAI' : 'Groq'}</span>
+          <span className="model-pill"><span className="status-dot" /> Groq</span>
           {googleUser ? <button className="google-user" onClick={logoutGoogle} title="Se déconnecter">{googleUser.picture && <img src={googleUser.picture} alt="" />} {googleUser.name || googleUser.email} · Déconnexion</button> : <div className="google-login" ref={googleButtonRef} />}
           {!googleUser && <button className="avatar" aria-label="Hiera">H</button>}
         </header>
