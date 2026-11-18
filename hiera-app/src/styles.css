@@ -183,3 +183,45 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
   .brand{padding-bottom:18px}
   .side-label{margin-top:18px}
 }
+
+
+/* Settings sections: clear hierarchy and compact responsive account controls */
+.settings-page{width:100%;max-width:820px;padding:30px 4px 45px}
+.settings-page h1{font:800 clamp(30px,4vw,42px) Manrope,sans-serif;letter-spacing:-1.5px;margin:5px 0}
+.settings-page>.eyebrow{font-size:10px;letter-spacing:2px;color:#b98cff}
+.settings-intro{margin:8px 0 22px}
+.settings-card{align-items:flex-start;flex-direction:column;gap:15px;padding:19px;margin:11px 0}
+.settings-card-copy{width:100%}
+.settings-card-copy p{max-width:620px}
+.google-settings-control{display:flex;align-items:center;flex-wrap:wrap;gap:12px;width:100%}
+.google-account-identity{display:flex;align-items:center;gap:12px;min-width:0;margin-right:auto}
+.google-account-identity>span:last-child{display:flex;flex-direction:column;gap:4px;min-width:0}
+.google-account-identity strong{font-size:13px;color:#f4eaff}
+.google-account-identity small{font-size:11px;color:#bba9d4;overflow-wrap:anywhere}
+.google-account-identity .google-g{font-size:25px}
+.settings-google-login{min-width:0;justify-content:flex-start}
+.settings-help,.settings-error{font-size:11px;color:#bda9d8}
+.settings-error{color:#f2a0aa}
+.integration-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;width:100%;max-width:none}
+.integration-item{display:flex;align-items:center;gap:10px;min-width:0;padding:11px;border:1px solid #7651a355;border-radius:12px;background:#ffffff06}
+.integration-icon{width:32px;height:32px;flex:none;display:grid;place-items:center;border-radius:10px;background:#6c36a633;color:#d8baff;font-size:17px;font-weight:700}
+.integration-icon.google-g{font-size:21px}
+.integration-item>span:nth-child(2){display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.integration-item strong{font-size:11px;color:#f1eaff}
+.integration-item small{font-size:10px;color:#a99abb;line-height:1.35}
+.integration-item em{font-style:normal;font-size:9px;color:#c6a7ef;white-space:nowrap}
+.privacy-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;width:100%}
+.privacy-list>div{display:flex;flex-direction:column;gap:5px;padding:12px;border-radius:11px;background:#ffffff07;border:1px solid #ffffff12}
+.privacy-list strong{font-size:11px;color:#e9ddfa}
+.privacy-list span{font-size:10px;color:#b7a9c9;line-height:1.5}
+:root[data-theme="light"] .google-account-identity strong,:root[data-theme="light"] .integration-item strong,:root[data-theme="light"] .privacy-list strong{color:#39244f}
+:root[data-theme="light"] .google-account-identity small,:root[data-theme="light"] .integration-item small,:root[data-theme="light"] .privacy-list span{color:#6d6078}
+:root[data-theme="light"] .integration-item,:root[data-theme="light"] .privacy-list>div{background:#f8f3ff;border-color:#e4d7f2}
+@media(max-width:620px){
+ .settings-page{padding:18px 0 35px}
+ .integration-list,.privacy-list{grid-template-columns:minmax(0,1fr)}
+ .integration-item{padding:10px}
+ .google-settings-control{align-items:flex-start;flex-direction:column}
+ .google-account-identity{margin-right:0}
+ .settings-action{width:100%}
+}
