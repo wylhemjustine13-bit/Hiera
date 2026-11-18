@@ -113,7 +113,7 @@ export default function App() {
       } else script.addEventListener('load', renderGoogleButton, { once: true });
     }
     return () => { active = false; };
-  }, [googleClientId, settingsOpen]);
+  }, [googleClientId, settingsOpen, settingsPage]);
 
   async function logoutGoogle() {
     await fetch('/api/auth/logout', { method: 'POST' });
