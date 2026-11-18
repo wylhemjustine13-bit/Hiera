@@ -323,3 +323,51 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 :root[data-theme="light"] .application-card{background:#fff;border-color:#e0d0f2}
 :root[data-theme="light"] .application-connect-button{color:#5e426f;border-color:#d8c4f2}
 @media(max-width:720px){.settings-home-grid,.application-directory{grid-template-columns:1fr}.settings-home-button{min-height:140px;padding:18px}.application-card{padding:11px}.settings-redesign{padding:20px 0 35px}}
+
+
+/* Compact settings refresh */
+.settings-redesign{max-width:900px;padding:22px 8px 34px}
+.settings-redesign .settings-back{margin-bottom:14px;padding:7px 10px;border-radius:9px;font-size:11px}
+.settings-redesign>.eyebrow{margin:8px 0;font-size:9px}
+.settings-redesign h1{font-size:clamp(25px,3vw,32px);letter-spacing:-.8px;margin:3px 0}
+.settings-intro{font-size:12px;margin:6px 0 16px;color:#b9accb}
+.settings-home-grid{gap:10px;margin-top:17px;max-width:760px}
+.settings-home-button{min-height:112px;gap:6px;padding:13px 15px;border-radius:12px}
+.settings-home-button:hover{transform:translateY(-1px)}
+.settings-home-icon{width:30px;height:30px;border-radius:9px;font-size:18px}
+.settings-home-icon img{width:19px;height:19px}
+.settings-home-button strong{font-size:12px}
+.settings-home-button small{font-size:10px;line-height:1.35}
+.settings-home-button>b{font-size:10px}
+.settings-detail{gap:9px;margin-top:14px;max-width:700px}
+.settings-description{font-size:11px;line-height:1.5;margin-bottom:2px}
+.settings-feature-card{gap:9px;padding:13px 15px;border-radius:12px}
+.settings-feature-card>strong{font-size:12px}
+.settings-feature-card p{font-size:11px;line-height:1.5}
+.settings-feature-heading{gap:10px}
+.settings-feature-heading strong{font-size:12px}
+.settings-feature-heading small{font-size:10px}
+.security-feature-icon{width:30px;height:30px;border-radius:9px;font-size:17px}
+.settings-primary-button{padding:8px 12px;border-radius:8px;font-size:11px}
+.settings-account-line{padding:9px 0}
+.settings-account-line strong,.settings-account-line span{font-size:11px}
+.settings-text-link{font-size:11px}
+.app-search-box{max-width:520px;padding:0 11px;border-radius:10px}
+.app-search-box>span{font-size:19px}
+.app-search-box input{height:39px;font-size:11px}
+.application-directory{gap:8px}
+.application-card{gap:9px;padding:9px 10px;border-radius:10px}
+.application-brand-logo{width:25px;height:25px}
+.application-card-copy{gap:3px}
+.application-card-copy strong{font-size:11px}
+.application-card-copy small{font-size:9px}
+.application-card-copy em{font-size:8px}
+.application-connect-button{padding:6px 8px;border-radius:7px;font-size:9px}
+.settings-static-value,.settings-select{font-size:11px}
+@media(max-width:720px){
+ .settings-redesign{padding:15px 0 25px}
+ .settings-home-grid{gap:8px}
+ .settings-home-button{min-height:92px;padding:11px 12px}
+ .settings-feature-card{padding:11px 12px}
+ .application-card{padding:9px}
+}
