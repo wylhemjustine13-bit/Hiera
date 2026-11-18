@@ -34,7 +34,7 @@ const initialMessage: Message = {
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [draft, setDraft] = useState('');
-  const [model, setModel] = useState('openai/gpt-oss-20b');
+  const [model, setModel] = useState('groq:openai/gpt-oss-20b');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [googleClientId, setGoogleClientId] = useState('');
@@ -122,7 +122,8 @@ export default function App() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model,
+          provider: model.startsWith('xai:') ? 'xai' : 'groq',
+          model: model.split(':').slice(1).join(':'),
           messages: nextMessages.map(({ role, content: text }) => ({ role, content: text })),
         }),
       });
@@ -162,10 +163,15 @@ export default function App() {
           <div className="mobile-brand"><AtomLogo /><span>hiera</span></div>
           <label className="model-select-label" htmlFor="model-select">Modèle</label>
           <select id="model-select" className="model-select" value={model} onChange={(event) => setModel(event.target.value)} disabled={busy}>
-            <option value="openai/gpt-oss-20b">GPT-OSS 20B</option>
-            <option value="openai/gpt-oss-120b">GPT-OSS 120B</option>
+            <optgroup label="Groq">
+              <option value="groq:openai/gpt-oss-20b">GPT-OSS 20B</option>
+              <option value="groq:openai/gpt-oss-120b">GPT-OSS 120B</option>
+            </optgroup>
+            <optgroup label="Grok (xAI)">
+              <option value="xai:grok-4.7">Grok 4.7</option>
+            </optgroup>
           </select>
-          <span className="model-pill"><span className="status-dot" /> Groq</span>
+          <span className="model-pill"><span className="status-dot" /> {model.startsWith('xai:') ? 'xAI' : 'Groq'}</span>
           {googleUser ? <button className="google-user" onClick={logoutGoogle} title="Se déconnecter">{googleUser.picture && <img src={googleUser.picture} alt="" />} {googleUser.name || googleUser.email} · Déconnexion</button> : <div className="google-login" ref={googleButtonRef} />}
           {!googleUser && <button className="avatar" aria-label="Hiera">H</button>}
         </header>
@@ -191,7 +197,7 @@ export default function App() {
         <form className="composer" onSubmit={sendMessage}>
           <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Écris un message à Hiera…" rows={1} aria-label="Message à Hiera" disabled={busy} />
           {error && <p className="error-message" role="alert">{error}</p>}
-          <div className="composer-footer"><span>Les réponses sont générées par les modèles Groq sélectionnés.</span><button type="submit" disabled={!draft.trim() || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div>
+          <div className="composer-footer"><span>Le fournisseur et le modèle sélectionnés génèrent les réponses.</span><button type="submit" disabled={!draft.trim() || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div>
         </form>
         <p className="disclaimer">Ne partage jamais de données personnelles ou confidentielles dans une conversation.</p>
       </section>
