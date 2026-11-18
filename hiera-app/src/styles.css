@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root{font-family:'DM Sans',sans-serif;color:#f5f0ff;background:#100d18;font-synthesis:none;text-rendering:optimizeLegibility}
+*{box-sizing:border-box}
+body{margin:0;min-width:320px;min-height:100vh}
+button,textarea{font:inherit}
+.shell{min-height:100vh;display:grid;grid-template-columns:260px 1fr;background:radial-gradient(ellipse at 65% 5%,#251638 0%,#100d18 48%)}
+.sidebar{height:100vh;position:sticky;top:0;border-right:1px solid #ffffff12;padding:28px 18px;display:flex;flex-direction:column;background:#100d18aa}
+.brand{display:flex;align-items:center;gap:11px;font:800 25px Manrope,sans-serif;letter-spacing:-1.5px;padding:0 10px 35px}
+.brand-mark,.mobile-brand{color:#c7a2ff}.brand-mark{font-size:29px}
+.new-chat{border:1px solid #674b85;background:#241a32;color:#f8f2ff;border-radius:12px;padding:13px;text-align:left;cursor:pointer}
+.side-label{font-size:10px;letter-spacing:1.8px;color:#81758f;margin:34px 10px 13px}
+.side-link{padding:12px 11px;border-radius:9px;color:#c5bbd1;font-size:13px;display:flex;align-items:center;gap:11px;margin-bottom:4px}
+.side-link.active{background:#352447;color:#fff}.side-link small{margin-left:auto;color:#82778d;font-size:10px}
+.sidebar-bottom{margin-top:auto;border-top:1px solid #ffffff12;padding:18px 5px 0;color:#958aa2;font-size:11px;display:flex;align-items:center;gap:8px}
+.status-dot{width:7px;height:7px;background:#9c77dc;border-radius:50%;display:inline-block}.version{margin-left:auto;color:#6e6478}
+.workspace{min-height:100vh;display:flex;flex-direction:column;max-width:1120px;width:100%;margin:auto;padding:0 48px 22px}
+.topbar{height:76px;display:flex;align-items:center;justify-content:flex-end;border-bottom:1px solid #ffffff10;gap:16px}
+.model-pill{font-size:11px;color:#b9adc8;border:1px solid #ffffff18;border-radius:30px;padding:8px 12px;display:flex;align-items:center;gap:8px}
+.avatar{width:32px;height:32px;border-radius:50%;border:1px solid #8d6db6;background:#342347;color:#f4eaff}
+.mobile-brand{display:none;font:800 21px Manrope,sans-serif;margin-right:auto}
+.conversation{width:100%;max-width:760px;margin:0 auto;flex:1;display:flex;flex-direction:column}
+.welcome{text-align:center;padding:52px 0 20px}
+.atom{height:112px;width:112px;margin:0 auto 18px;position:relative;display:grid;place-items:center;filter:drop-shadow(0 0 24px #a875ff55)}
+.nucleus{width:19px;height:19px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#d6aaff 38%,#8c4fe2 75%);box-shadow:0 0 24px #b77cff}
+.orbit{position:absolute;width:100px;height:39px;border:1.5px solid #b78af0;border-radius:50%;transform:rotate(0deg)}
+.orbit-two{transform:rotate(60deg);border-color:#8d72d6}.orbit-three{transform:rotate(-60deg);border-color:#d1a6ff}
+.eyebrow{font-size:10px;letter-spacing:3px;color:#a98bc8;margin:0 0 12px}
+h1{font:600 clamp(34px,5vw,49px)/1.12 Manrope,sans-serif;letter-spacing:-2px;margin:0}
+h1 em{font-style:normal;color:#c7a1ff}
+.subtitle{color:#a99eb5;font-size:14px;margin-top:14px}
+.messages{display:flex;flex-direction:column;gap:14px;padding:22px 0 32px}
+.message{display:flex;align-items:flex-start;gap:11px;max-width:88%;font-size:14px;line-height:1.65}
+.message p{margin:0;padding:12px 15px;border-radius:4px 15px 15px 15px;background:#211a2b;color:#e8e0f0}
+.message.user{align-self:flex-end}.message.user p{background:#493261;border-radius:15px 4px 15px 15px}
+.message-mark{color:#c39af8;padding-top:9px}
+.composer{max-width:760px;width:100%;margin:0 auto;border:1px solid #6c5581;background:#1b1524;border-radius:16px;padding:13px 14px 10px;box-shadow:0 12px 50px #0003}
+.composer textarea{width:100%;resize:vertical;min-height:30px;max-height:140px;border:0;outline:0;background:transparent;color:#fff;font-size:14px}
+.composer textarea::placeholder{color:#8e829a}
+.composer-footer{display:flex;align-items:center;justify-content:space-between;color:#857a90;font-size:10px;gap:12px}
+.composer-footer button{border:0;border-radius:10px;width:31px;height:31px;background:#a77be0;color:#160d20;font-size:21px;cursor:pointer}
+.composer-footer button:disabled{opacity:.4;cursor:not-allowed}
+.disclaimer{text-align:center;color:#746b7e;font-size:10px;margin:11px 0 0}
+@media(max-width:760px){.shell{display:block}.sidebar{display:none}.workspace{padding:0 17px 18px}.topbar{height:62px;justify-content:flex-end}.mobile-brand{display:block}.welcome{padding:45px 0 15px}.atom{transform:scale(.9);margin-bottom:10px}.message{max-width:96%}.composer-footer span{max-width:80%;line-height:1.4}}
