@@ -242,7 +242,7 @@ const server = createServer(async (req, res) => {
         access_type: 'offline',
         prompt: 'consent',
         include_granted_scopes: true,
-        scope: ['https://www.googleapis.com/auth/calendar.events.readonly'],
+        scope: ['https://www.googleapis.com/auth/calendar.events'],
         state,
       });
       res.setHeader('Set-Cookie', `hiera_google_oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Path=/api/integrations/google; Max-Age=600`);
@@ -271,11 +271,11 @@ const server = createServer(async (req, res) => {
       if (!code) return send(res, 400, { error: 'Code de validation Google manquant.' });
       const client = googleOAuthClient();
       const { tokens } = await client.getToken(code);
-      if (!tokens.refresh_token) throw new Error('Google n’a pas fourni de jeton de renouvellement. Réessaie en retirant puis en reconnectant l’accès Hiera dans ton compte Google.');
       await ensureIntegrationTable();
       const existing = await pool.query('SELECT encrypted_tokens FROM hiera_integrations WHERE user_id = $1 AND provider = $2', [user.sub, 'google_calendar']);
-      let savedTokens = { refresh_token: tokens.refresh_token, scope: tokens.scope || '' };
-      if (!tokens.refresh_token && existing.rowCount) savedTokens = decryptIntegration(existing.rows[0].encrypted_tokens);
+      if (!tokens.refresh_token && !existing.rowCount) throw new Error('Google n’a pas fourni de jeton de renouvellement. Réessaie après avoir retiré l’accès Hiera dans ton compte Google.');
+      const previousTokens = existing.rowCount ? decryptIntegration(existing.rows[0].encrypted_tokens) : {};
+      const savedTokens = { refresh_token: tokens.refresh_token || previousTokens.refresh_token, scope: tokens.scope || previousTokens.scope || '' };
       await pool.query(
         `INSERT INTO hiera_integrations (user_id, provider, encrypted_tokens, updated_at)
          VALUES ($1, $2, $3, NOW())
@@ -288,6 +288,75 @@ const server = createServer(async (req, res) => {
       console.error('Google Calendar OAuth callback failed:', error instanceof Error ? error.message : 'unknown error');
       res.writeHead(302, { Location: '/?google_calendar=error', 'Cache-Control': 'no-store' });
       return res.end();
+    }
+  }
+
+
+  async function getCalendarAccessToken(userId) {
+    await ensureIntegrationTable();
+    const result = await pool.query('SELECT encrypted_tokens FROM hiera_integrations WHERE user_id = $1 AND provider = $2', [userId, 'google_calendar']);
+    if (!result.rowCount) throw new Error('Google Agenda n’est pas connecté.');
+    const tokens = decryptIntegration(result.rows[0].encrypted_tokens);
+    const client = googleOAuthClient();
+    client.setCredentials({ refresh_token: tokens.refresh_token });
+    const refreshed = await client.getAccessToken();
+    if (!refreshed.token) throw new Error('Impossible de renouveler la connexion Google. Reconnecte Google Agenda.');
+    return refreshed.token;
+  }
+
+  async function calendarRequest(userId, endpoint, method = 'GET', payload) {
+    const accessToken = await getCalendarAccessToken(userId);
+    const response = await fetch(`https://www.googleapis.com/calendar/v3/${endpoint}`, {
+      method,
+      headers: { Authorization: `Bearer ${accessToken}`, ...(payload ? { 'Content-Type': 'application/json' } : {}) },
+      ...(payload ? { body: JSON.stringify(payload) } : {}),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error?.message || 'Google Agenda a refusé la demande.');
+    return data;
+  }
+
+  if (url.pathname.startsWith('/api/integrations/google/events')) {
+    const user = readSession(req);
+    if (!user) return send(res, 401, { error: 'Connecte-toi à Hiera pour accéder à ton agenda.' });
+    try {
+      if (req.method === 'GET' && url.pathname === '/api/integrations/google/events') {
+        const timeMin = url.searchParams.get('timeMin') || new Date().toISOString();
+        const timeMax = url.searchParams.get('timeMax') || new Date(Date.now() + 30 * 86400000).toISOString();
+        const params = new URLSearchParams({ timeMin, timeMax, singleEvents: 'true', orderBy: 'startTime', maxResults: '100' });
+        const data = await calendarRequest(user.sub, `calendars/primary/events?${params}`);
+        return send(res, 200, { events: data.items || [] });
+      }
+      if (req.method === 'POST' && url.pathname === '/api/integrations/google/events') {
+        const body = await readJson(req);
+        if (body.confirmed !== true) return send(res, 428, { error: 'Confirmation requise avant de créer ce rendez-vous.' });
+        if (typeof body.summary !== 'string' || !body.summary.trim() || !body.start || !body.end) return send(res, 400, { error: 'Titre, début et fin sont obligatoires.' });
+        return send(res, 201, { event: await calendarRequest(user.sub, 'calendars/primary/events', 'POST', {
+          summary: body.summary.trim().slice(0, 200),
+          description: typeof body.description === 'string' ? body.description.slice(0, 4000) : undefined,
+          start: body.start, end: body.end,
+        }) });
+      }
+      const eventMatch = url.pathname.match(/^\/api\/integrations\/google\/events\/([A-Za-z0-9_-]+)$/);
+      if (eventMatch && req.method === 'PATCH') {
+        const body = await readJson(req);
+        if (body.confirmed !== true) return send(res, 428, { error: 'Confirmation requise avant de modifier ce rendez-vous.' });
+        const patch = {};
+        for (const key of ['summary', 'description', 'location', 'start', 'end']) {
+          if (body[key] !== undefined) patch[key] = typeof body[key] === 'string' ? body[key].slice(0, key === 'description' ? 4000 : 500) : body[key];
+        }
+        if (!Object.keys(patch).length) return send(res, 400, { error: 'Aucune modification fournie.' });
+        return send(res, 200, { event: await calendarRequest(user.sub, `calendars/primary/events/${encodeURIComponent(eventMatch[1])}`, 'PATCH', patch) });
+      }
+      if (eventMatch && req.method === 'DELETE') {
+        const body = await readJson(req);
+        if (body.confirmed !== true) return send(res, 428, { error: 'Confirmation requise avant de supprimer ce rendez-vous.' });
+        await calendarRequest(user.sub, `calendars/primary/events/${encodeURIComponent(eventMatch[1])}`, 'DELETE');
+        return send(res, 200, { ok: true });
+      }
+      return send(res, 405, { error: 'Méthode non autorisée.' });
+    } catch (error) {
+      return send(res, 400, { error: error instanceof Error ? error.message : 'Opération Google Agenda impossible.' });
     }
   }
 
