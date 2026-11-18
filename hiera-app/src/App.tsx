@@ -201,12 +201,12 @@ export default function App() {
         <button className="brand" onClick={() => setSidebarOpen((open) => !open)} aria-label="Rétracter ou afficher la barre latérale"><AtomLogo /><div><span>Hiera</span><small>Votre IA, toujours avec vous</small></div></button>
         <button className="new-chat" onClick={newConversation} disabled={busy}>＋ Nouvelle conversation</button>
         <div className="side-label">ESPACE</div>
-        <button className={`side-link ${!settingsOpen ? "active" : ""}`} onClick={() => setSettingsOpen(false)}><span>◉</span><b>Conversation</b></button>
+        <button className={`side-link ${!settingsOpen ? "active" : ""}`} onClick={() => setSettingsOpen(false)}><span>◉</span><b>Conversation</b></button><div className="history-heading">CONVERSATIONS</div><div className="conversation-history">{conversations.filter((item) => !!item.archived === showArchived).slice(0,12).map((item) => <div className="history-row" key={item.id}><button className="history-open" onClick={() => openConversation(item)} title={item.title}>{item.title}</button><button className="history-action" onClick={() => archiveConversation(item.id)} aria-label={item.archived ? "Désarchiver" : "Archiver"}>{item.archived ? "↩" : "▣"}</button></div>)}</div><button className="history-toggle" onClick={() => setShowArchived((v) => !v)}>{showArchived ? "Voir les conversations" : "Voir les archivées"}</button>
         <button className={`side-link ${settingsOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(true); setSettingsPage("home"); }}><span>⚙</span><b>Paramètres</b></button>
         <div className="sidebar-account"><div className="account-status"><span className="status-dot" /> {googleUser ? "Google connecté" : "Compte non connecté"}</div><div className="account-provider"><span className="google-g">G</span><span>{googleUser ? googleUser.email : "Gérer dans Paramètres"}</span></div></div>
       </aside>
 
-      <section className="workspace">
+      <section className="workspace" onClick={(event) => { if (sidebarOpen && event.target === event.currentTarget) setSidebarOpen(false); }}>
         <header className="topbar">
           <button className="mobile-menu-button" onClick={() => setSidebarOpen((open) => !open)} aria-label="Afficher ou masquer le menu"><AtomLogo /></button>
           <span className="topbar-title">{settingsOpen ? "Paramètres" : "Conversation"}</span>
@@ -219,13 +219,7 @@ export default function App() {
             <h1>{settingsTitles[settingsPage] || 'Paramètres'}</h1>
             {settingsPage === 'home' && <>
               <p className="settings-intro">Choisis une rubrique pour gérer ton espace Hiera.</p>
-              <div className="settings-home-grid">
-                <button className="settings-home-button" onClick={() => setSettingsPage('account')}><span className="settings-home-icon">G</span><strong>Compte Google</strong><small>Connexion et compte utilisé par Hiera</small><b>Ouvrir →</b></button>
-                <button className="settings-home-button" onClick={() => setSettingsPage('apps')}><span className="settings-home-icon"><img src="https://cdn.simpleicons.org/googlechrome" alt="" /></span><strong>Applications et services</strong><small>Rechercher et gérer les services</small><b>Ouvrir →</b></button>
-                <button className="settings-home-button" onClick={() => setSettingsPage('privacy')}><span className="settings-home-icon">◈</span><strong>Confidentialité</strong><small>Informations et autorisations</small><b>Ouvrir →</b></button>
-                <button className="settings-home-button" onClick={() => setSettingsPage('security')}><span className="settings-home-icon">⌑</span><strong>Sécurité</strong><small>Session, déconnexion et secrets</small><b>Ouvrir →</b></button>
-                <button className="settings-home-button" onClick={() => setSettingsPage('preferences')}><span className="settings-home-icon">⚙</span><strong>Préférences</strong><small>Apparence et modèle IA</small><b>Ouvrir →</b></button>
-              </div>
+              <div className="settings-home-grid">{settingsItems.map(([id,title,description,icon]) => <button className="settings-home-button" key={id} onClick={() => setSettingsPage(id)}><span className="settings-home-icon">{icon}</span><strong>{title}</strong><small>{description}</small><b>Ouvrir →</b></button>)}</div>
             </>}
             {settingsPage === 'account' && <div className="settings-detail">
               <p className="settings-description">Ce compte sert à ouvrir ta session Hiera. Il ne donne pas automatiquement accès à Gmail, Drive ou Agenda.</p>
@@ -271,7 +265,7 @@ export default function App() {
             <div className="conversation">
               {authError && <p className="auth-error" role="alert">{authError}</p>}
               {!googleClientId && <p className="auth-hint">Connexion Google : configuration à terminer sur Render.</p>}
-              {messages.length === 0 && <div className="welcome compact-welcome"><h1>Hiera</h1><p className="subtitle">Que souhaites-tu faire aujourd’hui ?</p></div>}
+              {messages.length === 0 && <div className="welcome compact-welcome"><div className="atom" aria-hidden="true"><span className="orbit"/><span className="orbit orbit-two"/><span className="orbit orbit-three"/><span className="nucleus"/></div><h1>Hiera</h1><p className="subtitle">Que souhaites-tu faire aujourd’hui ?</p><div className="quick-prompts"><button type="button" onClick={() => setDraft('Aide-moi à organiser ma journée.')}><span>✦</span>Organiser ma journée</button><button type="button" onClick={() => setDraft('Explique-moi un sujet simplement.')}><span>◈</span>Apprendre quelque chose</button><button type="button" onClick={() => setDraft('Aide-moi à trouver une idée créative.')}><span>✧</span>Trouver une idée</button><button type="button" onClick={() => setDraft('Aide-moi à résoudre un problème.')}><span>⌘</span>Résoudre un problème</button></div></div>}
               <div className="messages" aria-live="polite">
                 {messages.map((message, index) => (
                   <article className={`message ${message.role}`} key={index}>
@@ -283,7 +277,7 @@ export default function App() {
               </div>
             </div>
             <form className="composer" onSubmit={sendMessage}>
-              <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Écris un message à Hiera…" rows={1} aria-label="Message à Hiera" disabled={busy} />
+              <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && settingsValues.enterToSend !== false) { event.preventDefault(); (event.currentTarget.form as HTMLFormElement)?.requestSubmit(); } }} placeholder="Écris un message à Hiera…" rows={1} aria-label="Message à Hiera" disabled={busy} />
               {error && <p className="error-message" role="alert">{error}</p>}
               <div className="composer-footer"><span>Pose ta question à Hiera</span><button type="submit" disabled={!draft.trim() || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div>
             </form>
