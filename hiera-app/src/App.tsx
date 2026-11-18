@@ -1,4 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (options: { client_id: string; callback: (response: { credential: string }) => void }) => void;
+          renderButton: (element: HTMLElement, options: Record<string, string>) => void;
+          disableAutoSelect: () => void;
+        };
+      };
+    };
+  }
+}
+type GoogleUser = { email: string; name: string; picture: string };
 
 type Message = { role: 'assistant' | 'user'; content: string };
 function AtomLogo() {
@@ -23,6 +38,72 @@ export default function App() {
   const [accessCode, setAccessCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [googleClientId, setGoogleClientId] = useState('');
+  const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
+  const [authError, setAuthError] = useState('');
+  const googleButtonRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      fetch('/api/config').then((r) => r.json()),
+      fetch('/api/auth/me').then((r) => r.json()),
+    ]).then(([config, session]) => {
+      if (!active) return;
+      setGoogleClientId(config.googleClientId || '');
+      setGoogleUser(session.user || null);
+    }).catch(() => setAuthError('Impossible de charger la connexion Google.'));
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!googleClientId || !googleButtonRef.current) return;
+    let active = true;
+    const renderGoogleButton = () => {
+      if (!active || !window.google || !googleButtonRef.current) return;
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async ({ credential }) => {
+          setAuthError('');
+          try {
+            const response = await fetch('/api/auth/google', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ credential }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Connexion Google impossible.');
+            setGoogleUser(data.user);
+          } catch (err) {
+            setAuthError(err instanceof Error ? err.message : 'Connexion Google impossible.');
+          }
+        },
+      });
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: 'filled_black', size: 'large', shape: 'pill', text: 'continue_with', width: '220',
+      });
+    };
+    if (window.google) renderGoogleButton();
+    else {
+      let script = document.querySelector<HTMLScriptElement>('script[data-google-identity]');
+      if (!script) {
+        script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.dataset.googleIdentity = 'true';
+        script.onload = renderGoogleButton;
+        document.head.appendChild(script);
+      } else script.addEventListener('load', renderGoogleButton, { once: true });
+    }
+    return () => { active = false; };
+  }, [googleClientId]);
+
+  async function logoutGoogle() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.google?.accounts.id.disableAutoSelect();
+    setGoogleUser(null);
+  }
 
   async function sendMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -87,9 +168,12 @@ export default function App() {
             <option value="openai/gpt-oss-120b">GPT-OSS 120B</option>
           </select>
           <span className="model-pill"><span className="status-dot" /> Groq</span>
-          <button className="avatar" aria-label="Hiera">H</button>
+          {googleUser ? <button className="google-user" onClick={logoutGoogle} title="Se déconnecter">{googleUser.picture && <img src={googleUser.picture} alt="" />} {googleUser.name || googleUser.email} · Déconnexion</button> : <div className="google-login" ref={googleButtonRef} />}
+          {!googleUser && <button className="avatar" aria-label="Hiera">H</button>}
         </header>
         <div className="conversation">
+          {authError && <p className="auth-error" role="alert">{authError}</p>}
+          {!googleClientId && <p className="auth-hint">Connexion Google : configuration à terminer sur Render.</p>}
           <div className="welcome">
             <div className="atom" aria-hidden="true"><span className="nucleus" /><i className="orbit orbit-one" /><i className="orbit orbit-two" /><i className="orbit orbit-three" /></div>
             <p className="eyebrow">TON ESPACE IA</p>
