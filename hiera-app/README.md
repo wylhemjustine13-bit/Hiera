@@ -2,13 +2,22 @@
 
 Hiera est une application indépendante avec sa propre interface et son propre serveur de connexion aux modèles IA.
 
-## Prérequis
+## Déploiement Render
 
-- Node.js 20 ou plus récent
-- npm
-- Une clé API OpenAI avec accès API et une facturation configurée auprès du fournisseur
+Le dépôt contient un fichier `render.yaml` à sa racine. Dans Render, crée un nouveau Blueprint et connecte ce dépôt, puis sélectionne la branche `hiera-independent`. Render utilisera le dossier `hiera-app`, construira l'interface et démarrera le serveur Node.
+
+Après la création du service, ouvre **Environment** dans Render et ajoute les deux variables secrètes :
+
+- `Key_API_Hiera` : ta clé API OpenAI.
+- `HIERA_ACCESS_PASSWORD` : un code privé que tu choisis et que tu ne partages avec personne.
+
+Ne colle jamais ces valeurs dans GitHub, dans le code du projet ou dans cette conversation. Dans l'interface Hiera hébergée, saisis le code privé dans le champ « Code privé » avant d'envoyer un message.
+
+Le serveur écoute automatiquement sur le port fourni par Render et sert à la fois l'interface construite et l'API. Le contrôle d'accès protège les appels à l'API en production.
 
 ## Installation locale
+
+Prérequis : Node.js 20 ou plus récent et npm.
 
 Depuis le dossier `hiera-app` :
 
@@ -16,10 +25,11 @@ Depuis le dossier `hiera-app` :
 npm install
 ```
 
-Copie `.env.example` vers `.env`, puis ajoute ta clé dans le fichier local :
+Copie `.env.example` vers `.env`, puis renseigne les valeurs localement :
 
 ```env
 Key_API_Hiera=ta_cle_api_ici
+HIERA_ACCESS_PASSWORD=ton_code_prive
 HIERA_API_PORT=3001
 ```
 
@@ -31,25 +41,13 @@ npm run dev
 
 Ouvre ensuite http://localhost:5173.
 
-## Utiliser le secret GitHub
+## Sécurité
 
-Le serveur accepte le nom exact `Key_API_Hiera` comme variable d'environnement. Il accepte aussi `OPENAI_API_KEY` pour rester compatible avec les installations existantes.
-
-Le secret GitHub Actions nommé `Key_API_Hiera` n'est pas transmis automatiquement à un serveur hébergé. Le workflow ou la plateforme d'hébergement doit explicitement l'injecter dans l'environnement du processus Node, par exemple dans un workflow GitHub Actions :
-
-```yaml
-env:
-  Key_API_Hiera: ${{ secrets.Key_API_Hiera }}
-```
-
-Cette configuration ne déploie pas à elle seule le serveur : il faut encore choisir une plateforme d'hébergement et lui transmettre le secret de façon sécurisée.
-
-## Sécurité des clés
-
-- La clé API est lue uniquement par le serveur Node.
-- Ne mets jamais la clé dans `src/`, dans une variable `VITE_*`, dans le code du dépôt ou dans un message.
+- La clé API reste côté serveur et n'est jamais intégrée au code du navigateur.
+- Le code d'accès protège l'API sur le déploiement public.
 - Le fichier `.env` est ignoré par Git.
-- Ne déploie pas le serveur de développement tel quel sur Internet. Avant un déploiement public, ajouter authentification, limitation de débit, protection anti-abus et configuration HTTPS.
+- Ne partage ni ta clé API ni ton code privé.
+- L'utilisation de l'API OpenAI peut entraîner des frais selon ton compte et ton utilisation. Vérifie les limites et la facturation avec un parent ou responsable.
 
 ## Fonctionnalités
 
@@ -57,12 +55,12 @@ Cette configuration ne déploie pas à elle seule le serveur : il faut encore ch
 - Identité visuelle violette avec atome flottant.
 - Appels réels à l'API OpenAI via le serveur.
 - Choix entre GPT-4.1 mini et GPT-4.1.
+- Code privé requis pour utiliser l'API en production.
 - Affichage de l'état de génération et des erreurs.
 
 ## Architecture
 
 - `src/` : interface React.
-- `server/index.mjs` : proxy serveur sécurisé pour les appels API.
+- `server/index.mjs` : serveur Node, API et fichiers de l'interface.
+- `dist/` : interface compilée lors du déploiement.
 - `.env.example` : modèle de configuration, sans secret.
-
-Les réponses de l'assistant proviennent de l'API configurée ; Hiera ne fabrique pas de réponses de remplacement en cas d'échec.
