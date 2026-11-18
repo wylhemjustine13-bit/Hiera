@@ -79,7 +79,7 @@ export default function App() {
         },
       });
       window.google.accounts.id.renderButton(googleButtonRef.current, {
-        theme: 'filled_black', size: 'large', shape: 'pill', text: 'continue_with', width: '220',
+        theme: 'filled_black', size: 'medium', shape: 'pill', text: 'continue_with', width: '200',
       });
     };
     if (window.google) renderGoogleButton();
@@ -211,7 +211,7 @@ export default function App() {
               <p className="settings-description">Ce compte sert à ouvrir ta session Hiera. Il ne donne pas automatiquement accès à Gmail, Drive ou Agenda.</p>
               <div className="settings-feature-card">
                 <div className="settings-feature-heading"><span className="google-g">G</span><div><strong>Connexion à Hiera</strong><small>{googleUser ? 'Compte Google connecté' : 'Aucun compte connecté'}</small></div></div>
-                {googleUser ? <><div className="settings-account-line"><strong>{googleUser.name || 'Compte Google'}</strong><span>{googleUser.email}</span></div><button className="settings-primary-button" onClick={logoutGoogle}>Se déconnecter</button></> : <><div className="google-login settings-google-login" ref={googleButtonRef} />{!googleClientId && <p className="settings-warning">La connexion Google doit être configurée sur Render.</p>}</>}
+                {googleUser ? <><div className="settings-account-line"><strong>{googleUser.name || 'Compte Google'}</strong><span>{googleUser.email}</span></div><button className="settings-primary-button" onClick={logoutGoogle}>Se déconnecter</button></> : <><div className="google-login settings-google-login" ref={googleButtonRef} />{!googleClientId && <p className="settings-warning">L'identifiant OAuth Google manque dans Render. Vérifie aussi que <strong>https://hiera.onrender.com</strong> figure dans les origines JavaScript autorisées de ton client Web Google. <a className="settings-text-link" href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer">Ouvrir Google Cloud Console ↗</a></p>}</>}
                 {authError && <p className="settings-warning" role="alert">{authError}</p>}
               </div>
             </div>}
