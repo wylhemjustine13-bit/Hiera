@@ -15,6 +15,7 @@ declare global {
 }
 type GoogleUser = { email: string; name: string; picture: string };
 type Message = { role: 'assistant' | 'user'; content: string };
+type Conversation = { id: string; title: string; messages: Message[]; updatedAt: number; archived?: boolean };
 
 function AtomLogo() {
   return <svg className="atom-logo" viewBox="0 0 64 64" aria-hidden="true">
@@ -29,6 +30,10 @@ function AtomLogo() {
 
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>(() => { try { return JSON.parse(localStorage.getItem('hiera-conversations') || '[]'); } catch { return []; } });
+  const [currentConversationId, setCurrentConversationId] = useState(() => crypto.randomUUID());
+  const [showArchived, setShowArchived] = useState(false);
+  const [settingsValues, setSettingsValues] = useState<Record<string, any>>(() => { try { return JSON.parse(localStorage.getItem('hiera-settings') || '{}'); } catch { return {}; } });
   const [draft, setDraft] = useState('');
   const [model, setModel] = useState('groq:openai/gpt-oss-20b');
   const [busy, setBusy] = useState(false);
@@ -41,6 +46,17 @@ export default function App() {
   const [appSearch, setAppSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(() => !window.matchMedia("(max-width: 760px)").matches);
   const googleButtonRef = useRef<HTMLDivElement>(null);
+  function updateSetting(key: string, value: any) { setSettingsValues((current) => ({ ...current, [key]: value })); }
+  function persistConversation(items: Message[], id = currentConversationId) {
+    if (!items.length) return;
+    const first = items.find((item) => item.role === 'user')?.content || 'Nouvelle conversation';
+    setConversations((current) => [{ id, title: first.slice(0, 42), messages: items, updatedAt: Date.now() }, ...current.filter((item) => item.id !== id)].slice(0, 100));
+  }
+  function openConversation(item: Conversation) { setCurrentConversationId(item.id); setMessages(item.messages); setSettingsOpen(false); setError(''); }
+  function archiveConversation(id: string) { setConversations((current) => current.map((item) => item.id === id ? { ...item, archived: !item.archived } : item)); }
+  function removeConversation(id: string) { setConversations((current) => current.filter((item) => item.id !== id)); if (id === currentConversationId) { setMessages([]); setCurrentConversationId(crypto.randomUUID()); } }
+  useEffect(() => { localStorage.setItem('hiera-conversations', JSON.stringify(conversations)); }, [conversations]);
+  useEffect(() => { localStorage.setItem('hiera-settings', JSON.stringify(settingsValues)); document.documentElement.dataset.theme = settingsValues.theme || 'dark'; }, [settingsValues]);
 
   useEffect(() => {
     let active = true;
@@ -110,6 +126,7 @@ export default function App() {
     if (!content || busy) return;
     const nextMessages: Message[] = [...messages, { role: 'user', content }];
     setMessages(nextMessages);
+    persistConversation(nextMessages);
     setDraft('');
     setError('');
     setBusy(true);
@@ -126,7 +143,7 @@ export default function App() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'La demande a échoué.');
       if (typeof data.reply !== 'string' || !data.reply.trim()) throw new Error("Le service IA n'a pas renvoyé de réponse.");
-      setMessages((current) => [...current, { role: 'assistant', content: data.reply }]);
+      setMessages((current) => { const updated = [...current, { role: 'assistant' as const, content: data.reply }]; persistConversation(updated); return updated; });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de joindre Hiera.');
     } finally {
@@ -136,7 +153,9 @@ export default function App() {
 
   function newConversation() {
     if (busy) return;
+    if (messages.length) persistConversation(messages);
     setMessages([]);
+    setCurrentConversationId(crypto.randomUUID());
     setError('');
     setSettingsOpen(false);
     setSettingsPage('home');
@@ -173,7 +192,8 @@ export default function App() {
     {name:'X',slug:'x',desc:'Compte et publications'},
   ];
   const filteredApplications = applications.filter((app) => (app.name + ' ' + app.desc).toLowerCase().includes(appSearch.toLowerCase()));
-  const settingsTitles: Record<string, string> = {home:'Paramètres',account:'Compte Google',apps:'Applications et services',privacy:'Confidentialité',security:'Sécurité',preferences:'Préférences'};
+  const settingsItems = [["account","Compte et connexion","Compte Google, session et profil","◉"],["parental","Contrôle parental","Informations sur les contrôles du compte","⌂"],["wellbeing","Sécurité et bien-être","Confidentialité et usage équilibré","♡"],["usage","Utilisation","Activité et statistiques locales","▤"],["billing","Facturation","État des achats et abonnements","€"],["general","Général","Langue, démarrage et comportement","⚙"],["theme","Thème","Apparence claire ou sombre","◐"],["notifications","Notifications","Préférences de notification","♢"],["voice","Voix","Lecture vocale des réponses","♫"],["personalization","Personnalisation","Nom et style de Hiera","✧"],["companion","Compagnon","Comportement du compagnon","◉"],["keyboard","Clavier","Raccourcis et envoi des messages","⌨"],["history","Chats et archivés","Historique et conversations archivées","▣"],["storage","Stockage et données","Gestion des conversations locales","▤"],["plugins","Plugins","Extensions disponibles","▦"],["security","Mot de passe et revue de code","Sécurité et dépôt du projet","⌑"],["apps","Applications et services","Connexions externes","▦"],["privacy","Confidentialité","Données et autorisations","◈"],["preferences","Modèles IA","Choix du modèle de conversation","✧"]];
+  const settingsTitles: Record<string, string> = Object.fromEntries([['home','Paramètres'], ...settingsItems.map(([id,title]) => [id,title])]);
 
   return (
     <main className={`shell ${sidebarOpen ? "" : "sidebar-collapsed"}`}>
