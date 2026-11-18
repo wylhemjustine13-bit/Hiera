@@ -189,9 +189,30 @@ const server = createServer(async (req, res) => {
       if (!Array.isArray(body.messages) || body.messages.length === 0 || body.messages.length > 60) {
         return send(res, 400, { error: 'Historique de conversation invalide.' });
       }
+      const supportedLanguages = {
+        fr: 'français', en: 'anglais', es: 'espagnol', de: 'allemand', it: 'italien',
+        pt: 'portugais', nl: 'néerlandais', pl: 'polonais', ru: 'russe', uk: 'ukrainien',
+        ar: 'arabe', zh: 'chinois', ja: 'japonais', ko: 'coréen', hi: 'hindi', bn: 'bengali',
+        tr: 'turc', sv: 'suédois', no: 'norvégien', da: 'danois', fi: 'finnois',
+        el: 'grec', he: 'hébreu', th: 'thaï', vi: 'vietnamien', id: 'indonésien',
+        sw: 'swahili', ro: 'roumain', cs: 'tchèque', hu: 'hongrois',
+      };
+      const responseLanguage = supportedLanguages[body.language] || 'français';
+      const assistantName = typeof body.assistantName === 'string'
+        ? body.assistantName.replace(/[^\\p{L}\\p{N} _-]/gu, '').trim().slice(0, 32) || 'Hiera'
+        : 'Hiera';
+      const responseStyles = {
+        friendly: 'Adopte un ton naturel, chaleureux et facile à comprendre.',
+        concise: 'Privilégie des réponses courtes et directes, sans omettre les informations utiles.',
+        detailed: 'Donne des explications structurées et détaillées, avec des exemples lorsque cela aide.',
+      };
+      const responseStyle = responseStyles[body.replyStyle] || responseStyles.friendly;
+      const familyStyle = body.familySafeMode === false
+        ? ''
+        : 'Privilégie des explications claires, respectueuses et adaptées à un public adolescent.';
       const messages = [{
         role: 'system',
-        content: "Tu es Hiera, un assistant IA utile, honnête et bienveillant. Réponds en français sauf si l'utilisateur demande une autre langue. N'invente pas de capacités ou d'actions que tu n'as pas réalisées.",
+        content: `Tu es ${assistantName}, un assistant IA utile, honnête et bienveillant. Réponds toujours en ${responseLanguage}, sauf si l'utilisateur demande explicitement une autre langue. ${responseStyle} ${familyStyle} N'invente pas de capacités ou d'actions que tu n'as pas réalisées. Respecte les règles de sécurité et refuse les demandes dangereuses.`,
       }, ...body.messages.map((message) => {
         if (!['user', 'assistant'].includes(message?.role) || typeof message.content !== 'string') {
           throw new Error('Format de message invalide.');
