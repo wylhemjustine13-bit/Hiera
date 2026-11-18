@@ -1,7 +1,8 @@
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, createReadStream, statSync } from 'node:fs';
 import { resolve, extname, normalize, sep } from 'node:path';
-import { timingSafeEqual, createHmac } from 'node:crypto';
+import { timingSafeEqual, createHmac, randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
+import pg from 'pg';
 import { OAuth2Client } from 'google-auth-library';
 
 const envPath = resolve(process.cwd(), '.env');
@@ -21,6 +22,11 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const ACCESS_PASSWORD = process.env.HIERA_ACCESS_PASSWORD;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const HIERA_SESSION_SECRET = process.env.HIERA_SESSION_SECRET;
+const GOOGLE_OAUTH_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+const GOOGLE_REDIRECT_URI = 'https://hiera.onrender.com/api/integrations/google/callback';
+const INTEGRATION_ENCRYPTION_KEY = process.env.INTEGRATION_ENCRYPTION_KEY;
+const pool = process.env.DATABASE_URL ? new pg.Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false } }) : null;
+let integrationTableReady = false;
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const DIST_DIR = resolve(process.cwd(), 'dist');
@@ -164,6 +170,137 @@ const server = createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/auth/logout') {
     res.setHeader('Set-Cookie', 'hiera_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0');
     return send(res, 200, { ok: true });
+  }
+
+  async function ensureIntegrationTable() {
+    if (!pool) throw new Error('La base de données des connexions doit être configurée (DATABASE_URL).');
+    if (integrationTableReady) return;
+    await pool.query(`CREATE TABLE IF NOT EXISTS hiera_integrations (
+      user_id TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      encrypted_tokens TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, provider)
+    )`);
+    integrationTableReady = true;
+  }
+
+  function integrationKey() {
+    if (!INTEGRATION_ENCRYPTION_KEY) throw new Error('La clé de chiffrement des intégrations manque dans Render.');
+    const key = /^[a-f0-9]{64}$/i.test(INTEGRATION_ENCRYPTION_KEY)
+      ? Buffer.from(INTEGRATION_ENCRYPTION_KEY, 'hex')
+      : Buffer.from(INTEGRATION_ENCRYPTION_KEY, 'base64');
+    if (key.length !== 32) throw new Error('La clé de chiffrement doit contenir 32 octets.');
+    return key;
+  }
+
+  function encryptIntegration(value) {
+    const iv = randomBytes(12);
+    const cipher = createCipheriv('aes-256-gcm', integrationKey(), iv);
+    const encrypted = Buffer.concat([cipher.update(JSON.stringify(value), 'utf8'), cipher.final()]);
+    return [iv, cipher.getAuthTag(), encrypted].map((part) => part.toString('base64url')).join('.');
+  }
+
+  function decryptIntegration(value) {
+    const [iv, tag, encrypted] = value.split('.').map((part) => Buffer.from(part, 'base64url'));
+    const decipher = createDecipheriv('aes-256-gcm', integrationKey(), iv);
+    decipher.setAuthTag(tag);
+    return JSON.parse(Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8'));
+  }
+
+  function getCookie(req, name) {
+    const item = (req.headers.cookie || '').split(';').map((part) => part.trim()).find((part) => part.startsWith(name + '='));
+    if (!item) return '';
+    try { return decodeURIComponent(item.slice(name.length + 1)); } catch { return ''; }
+  }
+
+  function googleOAuthClient() {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_OAUTH_CLIENT_SECRET) throw new Error('Configure GOOGLE_CLIENT_ID et GOOGLE_OAUTH_CLIENT_SECRET dans Render.');
+    return new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_REDIRECT_URI);
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/integrations/google/status') {
+    const user = readSession(req);
+    if (!user) return send(res, 401, { error: 'Connecte-toi à Hiera avant de connecter Google.' });
+    try {
+      await ensureIntegrationTable();
+      const result = await pool.query('SELECT provider FROM hiera_integrations WHERE user_id = $1 AND provider = $2', [user.sub, 'google_calendar']);
+      return send(res, 200, { connected: result.rowCount > 0 });
+    } catch (error) {
+      return send(res, 503, { error: error instanceof Error ? error.message : 'État de connexion indisponible.' });
+    }
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/integrations/google/start') {
+    const user = readSession(req);
+    if (!user) return send(res, 401, { error: 'Connecte-toi à Hiera avant de connecter Google.' });
+    try {
+      const state = randomBytes(32).toString('base64url');
+      const client = googleOAuthClient();
+      const authorizationUrl = client.generateAuthUrl({
+        access_type: 'offline',
+        prompt: 'consent',
+        include_granted_scopes: true,
+        scope: ['https://www.googleapis.com/auth/calendar.events.readonly'],
+        state,
+      });
+      res.setHeader('Set-Cookie', `hiera_google_oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Path=/api/integrations/google; Max-Age=600`);
+      res.writeHead(302, { Location: authorizationUrl, 'Cache-Control': 'no-store' });
+      return res.end();
+    } catch (error) {
+      return send(res, 503, { error: error instanceof Error ? error.message : 'Impossible de démarrer la connexion Google.' });
+    }
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/integrations/google/callback') {
+    const user = readSession(req);
+    const suppliedState = url.searchParams.get('state') || '';
+    const savedState = getCookie(req, 'hiera_google_oauth_state');
+    res.setHeader('Set-Cookie', 'hiera_google_oauth_state=; HttpOnly; Secure; SameSite=Lax; Path=/api/integrations/google; Max-Age=0');
+    if (!user) return send(res, 401, { error: 'Session Hiera expirée. Reconnecte-toi puis réessaie.' });
+    if (!suppliedState || !savedState || suppliedState.length !== savedState.length || !timingSafeEqual(Buffer.from(suppliedState), Buffer.from(savedState))) {
+      return send(res, 400, { error: 'Vérification de sécurité OAuth échouée. Recommence la connexion.' });
+    }
+    if (url.searchParams.has('error')) {
+      res.writeHead(302, { Location: '/?google_calendar=cancelled', 'Cache-Control': 'no-store' });
+      return res.end();
+    }
+    try {
+      const code = url.searchParams.get('code');
+      if (!code) return send(res, 400, { error: 'Code de validation Google manquant.' });
+      const client = googleOAuthClient();
+      const { tokens } = await client.getToken(code);
+      if (!tokens.refresh_token) throw new Error('Google n’a pas fourni de jeton de renouvellement. Réessaie en retirant puis en reconnectant l’accès Hiera dans ton compte Google.');
+      await ensureIntegrationTable();
+      const existing = await pool.query('SELECT encrypted_tokens FROM hiera_integrations WHERE user_id = $1 AND provider = $2', [user.sub, 'google_calendar']);
+      let savedTokens = { refresh_token: tokens.refresh_token, scope: tokens.scope || '' };
+      if (!tokens.refresh_token && existing.rowCount) savedTokens = decryptIntegration(existing.rows[0].encrypted_tokens);
+      await pool.query(
+        `INSERT INTO hiera_integrations (user_id, provider, encrypted_tokens, updated_at)
+         VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (user_id, provider) DO UPDATE SET encrypted_tokens = EXCLUDED.encrypted_tokens, updated_at = NOW()`,
+        [user.sub, 'google_calendar', encryptIntegration(savedTokens)],
+      );
+      res.writeHead(302, { Location: '/?google_calendar=connected', 'Cache-Control': 'no-store' });
+      return res.end();
+    } catch (error) {
+      console.error('Google Calendar OAuth callback failed:', error instanceof Error ? error.message : 'unknown error');
+      res.writeHead(302, { Location: '/?google_calendar=error', 'Cache-Control': 'no-store' });
+      return res.end();
+    }
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/integrations/google/disconnect') {
+    const user = readSession(req);
+    if (!user) return send(res, 401, { error: 'Connecte-toi à Hiera pour gérer tes connexions.' });
+    try {
+      await ensureIntegrationTable();
+      await pool.query('DELETE FROM hiera_integrations WHERE user_id = $1 AND provider = $2', [user.sub, 'google_calendar']);
+      return send(res, 200, { ok: true, connected: false });
+    } catch (error) {
+      return send(res, 503, { error: error instanceof Error ? error.message : 'Déconnexion impossible.' });
+    }
   }
 
   if (url.pathname === '/api/chat') {
