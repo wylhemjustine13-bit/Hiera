@@ -404,6 +404,7 @@ const server = createServer(async (req, res) => {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), reviewed_at TIMESTAMPTZ
     )
     `);
+    await pool.query("UPDATE hiera_help_requests SET shared_messages = NULL, status = 'expired' WHERE expires_at <= NOW() AND shared_messages IS NOT NULL AND status = 'approved'");
   }
 
   async function recordSafetySignal(user, message) {
