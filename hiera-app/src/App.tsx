@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import mammoth from 'mammoth/mammoth.browser';
+import * as XLSX from 'xlsx';
+import JSZip from 'jszip';
 import FormattedMessage from './FormattedMessage';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 declare global {
   interface Window {
@@ -24,7 +31,7 @@ type HieraSpeechRecognition = {
 type GoogleUser = { email: string; name: string; picture: string };
 type Message = { role: 'assistant' | 'user'; content: string; tokensUsed?: number };
 type Conversation = { id: string; title: string; messages: Message[]; updatedAt: number; archived?: boolean };
-type HieraAttachment = { id: string; name: string; mimeType: string; size: number; dataUrl?: string; text?: string };
+type HieraAttachment = { id: string; name: string; mimeType: string; size: number; dataUrl?: string; text?: string; previewUrl?: string };
 
 function AtomLogo() {
   return <svg className="atom-logo" viewBox="0 0 64 64" aria-hidden="true">
@@ -45,6 +52,7 @@ export default function App() {
   const [settingsValues, setSettingsValues] = useState<Record<string, any>>(() => { try { return JSON.parse(localStorage.getItem('hiera-settings') || '{}'); } catch { return {}; } });
   const [draft, setDraft] = useState('');
   const [attachments, setAttachments] = useState<HieraAttachment[]>([]);
+  const [previewAttachment, setPreviewAttachment] = useState<HieraAttachment | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const [model, setModel] = useState(() => localStorage.getItem('hiera-model') || 'groq:openai/gpt-oss-20b');
   const [busy, setBusy] = useState(false);
@@ -392,26 +400,55 @@ export default function App() {
 
   async function addAttachments(fileList: FileList | null) {
     if (!fileList?.length) return;
-    const incoming = Array.from(fileList);
     const next: HieraAttachment[] = [];
-    for (const file of incoming) {
+    for (const file of Array.from(fileList)) {
       if (attachments.length + next.length >= 5) { setError('Tu peux joindre jusqu’à 5 fichiers par message.'); break; }
       if (file.size > 10 * 1024 * 1024) { setError(`${file.name} dépasse la limite de 10 Mo.`); continue; }
-      if (file.type.startsWith('image/')) {
-        if (attachments.filter((item) => item.dataUrl).length + next.filter((item) => item.dataUrl).length >= 3) { setError('Tu peux joindre jusqu’à 3 images par message.'); continue; }
-        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { setError('Images acceptées : JPG, PNG et WebP.'); continue; }
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result || ''));
-          reader.onerror = () => reject(new Error('Lecture de l’image impossible.'));
-          reader.readAsDataURL(file);
-        });
-        next.push({ id: crypto.randomUUID(), name: file.name, mimeType: file.type, size: file.size, dataUrl });
-      } else if (['text/plain', 'text/markdown', 'text/csv', 'application/json'].includes(file.type) || /\.(txt|md|csv|json)$/i.test(file.name)) {
-        const text = await file.text();
-        next.push({ id: crypto.randomUUID(), name: file.name, mimeType: file.type || 'text/plain', size: file.size, text: text.slice(0, 50000) });
-      } else {
-        setError(`Format non pris en charge pour l’instant : ${file.name}. Utilise une image, TXT, MD, CSV ou JSON.`);
+      const id = crypto.randomUUID();
+      try {
+        if (file.type.startsWith('image/')) {
+          if (attachments.filter((item) => item.dataUrl).length + next.filter((item) => item.dataUrl).length >= 3) { setError('Tu peux joindre jusqu’à 3 images par message.'); continue; }
+          if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { setError('Images acceptées : JPG, PNG et WebP.'); continue; }
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ''));
+            reader.onerror = () => reject(new Error('Lecture de l’image impossible.'));
+            reader.readAsDataURL(file);
+          });
+          next.push({ id, name: file.name, mimeType: file.type, size: file.size, dataUrl });
+        } else if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
+          const buffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+          const pages: string[] = [];
+          for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+            const page = await pdf.getPage(pageNumber);
+            const content = await page.getTextContent();
+            pages.push(content.items.map((item: any) => 'str' in item ? item.str : '').join(' '));
+          }
+          next.push({ id, name: file.name, mimeType: 'application/pdf', size: file.size, text: pages.join('\n\n').slice(0, 50000), previewUrl: URL.createObjectURL(file) });
+        } else if (/\.docx$/i.test(file.name)) {
+          const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+          next.push({ id, name: file.name, mimeType: file.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: file.size, text: result.value.slice(0, 50000) });
+        } else if (/\.(xlsx|xls)$/i.test(file.name)) {
+          const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+          const sheets = workbook.SheetNames.map((name) => `[Feuille : ${name}]\n${XLSX.utils.sheet_to_csv(workbook.Sheets[name])}`);
+          next.push({ id, name: file.name, mimeType: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', size: file.size, text: sheets.join('\n\n').slice(0, 50000) });
+        } else if (/\.pptx$/i.test(file.name)) {
+          const zip = await JSZip.loadAsync(await file.arrayBuffer());
+          const slideNames = Object.keys(zip.files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/i.test(name)).sort();
+          const slides = await Promise.all(slideNames.map(async (name, index) => {
+            const xml = await zip.files[name].async('text');
+            const doc = new DOMParser().parseFromString(xml, 'application/xml');
+            return `[Diapositive ${index + 1}] ${Array.from(doc.getElementsByTagNameNS("*", "t")).map((node) => node.textContent || "").join(" ")}`;
+          }));
+          next.push({ id, name: file.name, mimeType: file.type || 'application/vnd.openxmlformats-officedocument.presentationml.presentation', size: file.size, text: slides.join('\n\n').slice(0, 50000) });
+        } else if (['text/plain', 'text/markdown', 'text/csv', 'application/json'].includes(file.type) || /\.(txt|md|csv|json)$/i.test(file.name)) {
+          next.push({ id, name: file.name, mimeType: file.type || 'text/plain', size: file.size, text: (await file.text()).slice(0, 50000) });
+        } else {
+          setError(`Format non pris en charge : ${file.name}. Formats acceptés : PDF, DOCX, XLSX, XLS, PPTX, TXT, MD, CSV, JSON et images JPG/PNG/WebP.`);
+        }
+      } catch (err) {
+        setError(`Impossible de lire ${file.name} : ${err instanceof Error ? err.message : "fichier invalide"}.`);
       }
     }
     if (next.length) { setAttachments((current) => [...current, ...next]); setError(''); }
@@ -419,7 +456,12 @@ export default function App() {
   }
 
   function removeAttachment(id: string) {
-    setAttachments((current) => current.filter((item) => item.id !== id));
+    setAttachments((current) => {
+      const item = current.find((entry) => entry.id === id);
+      if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      if (previewAttachment?.id === id) setPreviewAttachment(null);
+      return current.filter((item) => item.id !== id);
+    });
   }
 
   async function sendText(content: string, fromVoice = false, includedAttachments: HieraAttachment[] = []) {
@@ -431,7 +473,7 @@ export default function App() {
     setMessages(nextMessages);
     persistConversation(nextMessages);
     setDraft('');
-    if (includedAttachments.length) setAttachments([]);
+    if (includedAttachments.length) { includedAttachments.forEach((item) => { if (item.previewUrl) URL.revokeObjectURL(item.previewUrl); }); setAttachments([]); setPreviewAttachment(null); }
     setError('');
     setBusy(true);
     if (fromVoice) setVoiceStatus('Hiera prépare sa réponse…');
@@ -708,13 +750,14 @@ export default function App() {
               </div>
             </div>
             <form className="composer" onSubmit={sendMessage}>
-              <input ref={attachmentInputRef} className="attachment-input" type="file" accept="image/jpeg,image/png,image/webp,.txt,.md,.csv,.json,text/plain,text/markdown,text/csv,application/json" multiple onChange={(event) => { void addAttachments(event.target.files); }} />
-              {attachments.length > 0 && <div className="attachment-list">{attachments.map((item) => <div className="attachment-chip" key={item.id}>{item.dataUrl ? <img src={item.dataUrl} alt={item.name} /> : <span className="attachment-file-icon">▤</span>}<span title={item.name}>{item.name}</span><button type="button" onClick={() => removeAttachment(item.id)} aria-label={`Retirer ${item.name}`}>×</button></div>)}</div>}
+              <input ref={attachmentInputRef} className="attachment-input" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf,.docx,.xlsx,.xls,.pptx,.txt,.md,.csv,.json,text/plain,text/markdown,text/csv,application/json" multiple onChange={(event) => { void addAttachments(event.target.files); }} />
+              {attachments.length > 0 && <div className="attachment-list">{attachments.map((item) => <div className="attachment-chip" key={item.id}>{item.dataUrl ? <img src={item.dataUrl} alt={item.name} /> : <button type="button" className="attachment-open" onClick={() => setPreviewAttachment(item)} title={`Ouvrir ${item.name}`}><span className="attachment-file-icon">▤</span><span title={item.name}>{item.name}</span></button>}<button type="button" onClick={() => removeAttachment(item.id)} aria-label={`Retirer ${item.name}`}>×</button></div>)}</div>}
               <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { const enterBehavior = settingsValues.enterBehavior || (settingsValues.enterToSend === false ? 'newline' : 'send'); if (event.key === "Enter" && !event.shiftKey && enterBehavior === 'send') { event.preventDefault(); (event.currentTarget.form as HTMLFormElement)?.requestSubmit(); } }} placeholder="Écris un message à Hiera…" rows={1} aria-label="Message à Hiera" disabled={busy} />
               {error && <p className="error-message" role="alert">{error}</p>}
               <div className="composer-footer"><span>Pose ta question à Hiera</span><div className="composer-actions">{busy && <button type="button" className="copy-message stop-generation" onClick={stopGeneration}>■ Arrêter Hiera</button>}{speechActive && <button type="button" className="copy-message stop-generation" onClick={stopSpeech}>■ Arrêter le vocal</button>}<button type="button" className="attach-toggle" onClick={() => attachmentInputRef.current?.click()} disabled={busy} aria-label="Joindre une photo ou un fichier" title="Joindre une photo ou un fichier">＋</button><button type="button" className={liveVoice ? 'voice-toggle active' : 'voice-toggle'} onClick={liveVoice ? stopLiveVoice : startLiveVoice} aria-label={liveVoice ? 'Arrêter la conversation vocale' : 'Démarrer la conversation vocale'}>{liveVoice ? '■' : <svg className="voice-mic-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5 10.5v1.5a7 7 0 0 0 14 0v-1.5M12 19v3M8 22h8"/></svg>}</button><button type="submit" disabled={(!draft.trim() && !attachments.length) || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div></div>{liveVoice && <p className="voice-status" role="status">{voiceStatus} · Micro actif uniquement pendant l'écoute. <button type="button" onClick={stopLiveVoice}>Arrêter</button></p>}
-              <p className="attachment-hint">Photos JPG, PNG, WebP · fichiers TXT, MD, CSV, JSON · 10 Mo maximum chacun</p>
+              <p className="attachment-hint">PDF, Word DOCX, Excel XLSX/XLS, PowerPoint PPTX, TXT, MD, CSV, JSON et images · 10 Mo maximum chacun</p>
             </form>
+            {previewAttachment && <div className="document-overlay" role="dialog" aria-modal="true" aria-label={`Aperçu de ${previewAttachment.name}`}><section className="document-panel"><header className="document-header"><div><strong>{previewAttachment.name}</strong><small>{previewAttachment.mimeType === 'application/pdf' ? 'Lecteur PDF' : 'Aperçu du contenu extrait'}</small></div><button type="button" onClick={() => setPreviewAttachment(null)} aria-label="Fermer l’aperçu">×</button></header>{previewAttachment.previewUrl ? <iframe className="pdf-viewer" src={previewAttachment.previewUrl} title={previewAttachment.name} /> : <pre className="document-text">{previewAttachment.text || 'Aucun texte lisible trouvé dans ce fichier.'}</pre>}</section></div>}
             <p className="disclaimer">Ne partage jamais de données personnelles ou confidentielles dans une conversation.</p>
             {writingOpen && <div className="writing-overlay" role="dialog" aria-modal="true" aria-label="Espace d’écriture"><section className="writing-panel"><header className="writing-header"><div><strong>Espace d’écriture</strong><small>Modifie et mets en forme ton texte</small></div><button type="button" onClick={() => setWritingOpen(false)} aria-label="Fermer l’espace d’écriture">×</button></header><div className="writing-toolbar"><button type="button" onClick={() => formatWriting('bold')}><b>G</b></button><button type="button" onClick={() => formatWriting('italic')}><i>I</i></button><button type="button" onClick={() => formatWriting('underline')}><u>S</u></button><button type="button" onClick={() => formatWriting('hiliteColor','#fff29a')} title="Surligner">🖍</button><button type="button" onClick={() => formatWriting('insertParagraph')} title="Nouveau paragraphe">¶</button><select aria-label="Police" defaultValue="Arial" onChange={(e) => formatWriting('fontName',e.target.value)}><option value="Arial">Arial</option><option value="Georgia">Georgia</option><option value="Verdana">Verdana</option><option value="Times New Roman">Times New Roman</option><option value="Courier New">Courier New</option><option value="Trebuchet MS">Trebuchet MS</option></select><select aria-label="Taille du texte" defaultValue="3" onChange={(e) => formatWriting('fontSize',e.target.value)}><option value="2">Petit</option><option value="3">Normal</option><option value="4">Grand</option><option value="5">Très grand</option><option value="6">Titre</option></select></div><div ref={writingEditorRef} className="writing-editable" contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-placeholder="Écris ou colle ton texte ici…" /><footer className="writing-footer"><button type="button" onClick={copyWriting}>⧉ Copier le texte</button><button type="button" onClick={() => { setDraft(writingEditorRef.current?.innerText || ''); setWritingOpen(false); }}>Utiliser dans le message</button><button type="button" onClick={() => setWritingOpen(false)}>Terminer</button></footer></section></div>}
           </>
