@@ -40,6 +40,8 @@ export default function App() {
   const [error, setError] = useState('');
   const [googleClientId, setGoogleClientId] = useState('');
   const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
+  const [calendarConnected, setCalendarConnected] = useState(false);
+  const [calendarNotice, setCalendarNotice] = useState('');
   const [authError, setAuthError] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsPage, setSettingsPage] = useState('home');
@@ -72,6 +74,32 @@ export default function App() {
     }).catch(() => setAuthError('Impossible de charger la connexion Google.'));
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get('google_calendar');
+    if (result === 'connected') setCalendarNotice('Google Agenda est connecté.');
+    else if (result === 'cancelled') setCalendarNotice('Connexion Google Agenda annulée.');
+    else if (result === 'error') setCalendarNotice('La connexion Google Agenda a échoué. Vérifie les paramètres OAuth Google.');
+    if (result) {
+      params.delete('google_calendar');
+      const query = params.toString();
+      window.history.replaceState({}, '', window.location.pathname + (query ? '?' + query : '') + window.location.hash);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!googleUser) { setCalendarConnected(false); return; }
+    let active = true;
+    fetch('/api/integrations/google/status')
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'État de Google Agenda indisponible.');
+        if (active) setCalendarConnected(data.connected === true);
+      })
+      .catch((err) => { if (active) setCalendarNotice(err instanceof Error ? err.message : 'État de Google Agenda indisponible.'); });
+    return () => { active = false; };
+  }, [googleUser]);
 
   useEffect(() => {
     if (!googleClientId || !googleButtonRef.current) return;
@@ -240,10 +268,27 @@ export default function App() {
               <p className="settings-description">Retrouve les services que tu souhaites utiliser avec Hiera. Recherche une application par son nom.</p>
               <label className="app-search-box"><span>⌕</span><input value={appSearch} onChange={(event) => setAppSearch(event.target.value)} placeholder="Rechercher une application..." aria-label="Rechercher une application" /></label>
               <div className="application-directory">
+                {calendarNotice && <p className="settings-description" role="status">{calendarNotice}</p>}
                 {filteredApplications.map((app) => <article className="application-card" key={app.slug}>
                   <img className="application-brand-logo" src={`https://cdn.simpleicons.org/${app.slug}`} alt={`Logo ${app.name}`} loading="lazy" onError={(event) => { event.currentTarget.style.opacity='0'; }} />
-                  <div className="application-card-copy"><strong>{app.name}</strong><small>{app.desc}</small><em>Connexion non configurée</em></div>
-                  <button className="application-connect-button" disabled title="L'autorisation officielle de ce service n'est pas encore configurée">Connecter</button>
+                  <div className="application-card-copy"><strong>{app.name}</strong><small>{app.desc}</small><em>{app.slug === 'googlecalendar' ? (calendarConnected ? 'Connecté à Google Agenda' : 'Connexion Google Agenda disponible') : 'Connexion non configurée'}</em></div>
+                  {app.slug === 'googlecalendar' ? <button className="application-connect-button" onClick={async () => {
+                    setCalendarNotice('');
+                    if (calendarConnected) {
+                      try {
+                        const response = await fetch('/api/integrations/google/disconnect', { method: 'POST' });
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || 'Déconnexion impossible.');
+                        setCalendarConnected(false);
+                        setCalendarNotice('Google Agenda a été déconnecté.');
+                      } catch (err) { setCalendarNotice(err instanceof Error ? err.message : 'Déconnexion impossible.'); }
+                    } else if (!googleUser) {
+                      setSettingsPage('account');
+                      setCalendarNotice('Connecte d’abord ton compte Google à Hiera, puis reviens ici pour autoriser Google Agenda.');
+                    } else {
+                      window.location.href = '/api/integrations/google/start';
+                    }
+                  }}>{calendarConnected ? 'Déconnecter' : googleUser ? 'Connecter' : 'Connecter mon compte'}</button> : <button className="application-connect-button" disabled title="L'autorisation officielle de ce service n'est pas encore configurée">Connecter</button>}
                 </article>)}
                 {filteredApplications.length === 0 && <p className="settings-empty">Aucune application ne correspond à « {appSearch} ».</p>}
               </div>
