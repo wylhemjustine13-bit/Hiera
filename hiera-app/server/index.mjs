@@ -427,6 +427,9 @@ const server = createServer(async (req, res) => {
         return { role: message.role, content: message.content.slice(0, 20000) };
       })];
 
+      const latestUserMessage = [...body.messages].reverse().find((message) => message?.role === 'user' && typeof message.content === 'string')?.content || '';
+      const asksCalendar = /agenda|calendrier|rendez[- ]?vous|événements?|planning|mon emploi du temps|mes horaires/i.test(latestUserMessage);
+
       const calendarTools = chatUser ? [{
         type: 'function',
         function: {
@@ -453,7 +456,7 @@ const server = createServer(async (req, res) => {
           body: JSON.stringify({
             model,
             messages: chatMessages,
-            ...(includeTools && calendarTools ? { tools: calendarTools, tool_choice: 'auto' } : {}),
+            ...(includeTools && calendarTools ? { tools: calendarTools, tool_choice: asksCalendar ? 'required' : 'auto' } : {}),
             max_completion_tokens: 1200,
           }),
         });
