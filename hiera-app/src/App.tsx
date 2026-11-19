@@ -240,59 +240,24 @@ export default function App() {
     }
   }
 
-  async function speakText(text: string, voiceKey: 'directVoice' | 'readVoice' = 'readVoice') {
-    const voiceId = settingsValues[voiceKey] || 'fr-FR-Neural2-F';
-    if (voiceKey === 'directVoice') setVoiceStatus('Hiera prépare sa voix…');
-    else setVoiceTestStatus('Préparation de la voix…');
-    try {
-      const response = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text.slice(0, 3000), voice: voiceId }),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (typeof data.audioContent === 'string') {
-          window.speechSynthesis?.cancel();
-          const audio = new Audio('data:audio/mp3;base64,' + data.audioContent);
-          if (voiceKey === 'directVoice') setVoiceStatus('Hiera parle…');
-          else setVoiceTestStatus('Lecture en cours…');
-          audio.onended = () => {
-            if (voiceKey === 'directVoice') {
-              if (liveVoiceRef.current) startVoiceListening();
-              else setVoiceStatus('Réponse vocale terminée');
-            } else setVoiceTestStatus('Lecture terminée');
-          };
-          audio.onerror = () => {
-            if (voiceKey === 'directVoice') setVoiceStatus('Lecture vocale indisponible');
-            else setVoiceTestStatus('Lecture indisponible');
-          };
-          await audio.play();
-          return;
-        }
-      }
-      if (response.status !== 503 && response.status !== 404) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || 'Le service vocal est momentanément indisponible.');
-      }
-    } catch (err) {
-      if (err instanceof Error && !/Failed to fetch/i.test(err.message)) {
-        setError(err.message);
-        if (voiceKey === 'readVoice') setVoiceTestStatus('Lecture indisponible');
-        return;
-      }
-    }
+  function speakText(text: string, voiceKey: 'directVoice' | 'readVoice' = 'readVoice') {
     if (!('speechSynthesis' in window)) {
-      setError("Le service vocal intégré n'est pas encore configuré et aucune voix locale n'est disponible.");
+      setError("La synthèse vocale n'est pas prise en charge par ce navigateur.");
+      if (voiceKey === 'readVoice') setVoiceTestStatus('Voix indisponible');
       return;
     }
+    const frenchVoices = availableVoices.filter((voice) => voice.lang.toLowerCase().startsWith('fr'));
+    const savedVoice = settingsValues[voiceKey];
+    const selectedVoice = frenchVoices.find((voice) => voice.voiceURI === savedVoice)
+      || frenchVoices.find((voice) => voice.default)
+      || frenchVoices[0];
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'fr-FR';
-    const localVoice = availableVoices.find((voice) => voice.lang.toLowerCase().startsWith('fr'));
-    if (localVoice) { utterance.voice = localVoice; utterance.lang = localVoice.lang; }
+    utterance.lang = selectedVoice?.lang || 'fr-FR';
+    if (selectedVoice) utterance.voice = selectedVoice;
+    utterance.rate = 1;
     utterance.onstart = () => {
-      if (voiceKey === 'directVoice') setVoiceStatus('Hiera parle avec la voix locale…');
-      else setVoiceTestStatus('Lecture locale en cours…');
+      if (voiceKey === 'directVoice') setVoiceStatus('Hiera parle…');
+      else setVoiceTestStatus('Lecture en cours…');
     };
     utterance.onend = () => {
       if (voiceKey === 'directVoice') {
@@ -301,7 +266,8 @@ export default function App() {
       } else setVoiceTestStatus('Lecture terminée');
     };
     utterance.onerror = () => {
-      if (voiceKey === 'readVoice') setVoiceTestStatus('Lecture indisponible');
+      if (voiceKey === 'directVoice') setVoiceStatus('Lecture vocale indisponible');
+      else setVoiceTestStatus('Lecture indisponible');
     };
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
@@ -618,47 +584,22 @@ export default function App() {
             {settingsPage === 'theme' && <div className="settings-detail"><div className="settings-feature-card"><strong>Apparence</strong><p>Choisis l'apparence de Hiera.</p><select className="settings-select" value={settingsValues.theme || 'dark'} onChange={(e) => updateSetting('theme',e.target.value)}><option value="dark">Sombre violet</option><option value="light">Clair</option></select></div></div>}
             {settingsPage === 'notifications' && <div className="settings-detail"><div className="settings-feature-card"><strong>Notifications du navigateur</strong><p>Autorise ou bloque les notifications de Hiera dans ton navigateur.</p><span className="settings-static-value">État : {typeof Notification === 'undefined' ? 'Non pris en charge' : Notification.permission}</span><button className="settings-primary-button" onClick={async () => { if (typeof Notification === 'undefined') { updateSetting('notificationPermission','unsupported'); return; } const permission = Notification.permission === 'default' ? await Notification.requestPermission() : Notification.permission; updateSetting('notificationPermission',permission); if (permission === 'granted') new Notification('Hiera',{body:'Les notifications du navigateur sont activées.'}); }}>Activer et tester</button></div></div>}
             {settingsPage === 'voice' && <div className="settings-detail">
-              <div className="settings-feature-card">
-                <strong>Voix du mode direct</strong>
-                <p>Choisis la voix intégrée de Hiera pour les conversations vocales.</p>
-                <select className="settings-select" value={settingsValues.directVoice || 'fr-FR-Neural2-F'} onChange={(e) => updateSetting('directVoice', e.target.value)}>
-                  <optgroup label="Voix féminines — français (France)">
-                    <option value="fr-FR-Neural2-F">Claire · naturelle</option>
-                    <option value="fr-FR-Chirp3-HD-Achernar">Élise · expressive HD</option>
-                    <option value="fr-FR-Wavenet-F">Camille · douce</option>
-                    <option value="fr-FR-Chirp3-HD-Callirrhoe">Manon · chaleureuse HD</option>
-                  </optgroup>
-                  <optgroup label="Voix masculines — français (France)">
-                    <option value="fr-FR-Neural2-G">Thomas · naturel</option>
-                    <option value="fr-FR-Chirp3-HD-Achird">Hugo · expressif HD</option>
-                    <option value="fr-FR-Wavenet-G">Lucas · posé</option>
-                    <option value="fr-FR-Chirp3-HD-Charon">Nathan · grave HD</option>
-                  </optgroup>
-                </select>
-                <button className="settings-primary-button" onClick={() => void speakText('Bonjour, je suis Hiera. Comment puis-je t’aider ?', 'directVoice')}>Écouter cette voix</button>
-              </div>
-              <div className="settings-feature-card">
-                <strong>Voix pour lire les réponses</strong>
-                <p>Tu peux choisir une voix différente pour la lecture des messages.</p>
-                <select className="settings-select" value={settingsValues.readVoice || 'fr-FR-Neural2-F'} onChange={(e) => updateSetting('readVoice', e.target.value)}>
-                  <optgroup label="Voix féminines — français (France)">
-                    <option value="fr-FR-Neural2-F">Claire · naturelle</option>
-                    <option value="fr-FR-Chirp3-HD-Achernar">Élise · expressive HD</option>
-                    <option value="fr-FR-Wavenet-F">Camille · douce</option>
-                    <option value="fr-FR-Chirp3-HD-Callirrhoe">Manon · chaleureuse HD</option>
-                  </optgroup>
-                  <optgroup label="Voix masculines — français (France)">
-                    <option value="fr-FR-Neural2-G">Thomas · naturel</option>
-                    <option value="fr-FR-Chirp3-HD-Achird">Hugo · expressif HD</option>
-                    <option value="fr-FR-Wavenet-G">Lucas · posé</option>
-                    <option value="fr-FR-Chirp3-HD-Charon">Nathan · grave HD</option>
-                  </optgroup>
-                </select>
-                <button className="settings-primary-button" onClick={() => void speakText('Bonjour, je suis Hiera. Voici un exemple de lecture à haute voix.', 'readVoice')}>Écouter cette voix</button>
-                <button className="settings-text-link" onClick={() => { window.speechSynthesis?.cancel(); setVoiceTestStatus('Lecture arrêtée'); }}>Arrêter la lecture</button>
-                {voiceTestStatus && <small>{voiceTestStatus}</small>}
-              </div>
-              <p className="settings-description">8 voix françaises intégrées : 4 féminines et 4 masculines. Elles seront disponibles dès que le service vocal sécurisé sera configuré sur le serveur.</p>
+              {(['directVoice', 'readVoice'] as const).map((voiceKey) => (
+                <div className="settings-feature-card" key={voiceKey}>
+                  <strong>{voiceKey === 'directVoice' ? 'Voix du mode direct' : 'Voix pour lire les réponses'}</strong>
+                  <p>{voiceKey === 'directVoice' ? 'Choisis la voix utilisée pendant les conversations vocales.' : 'Choisis une voix indépendante pour lire les réponses de Hiera.'}</p>
+                  <select className="settings-select" value={settingsValues[voiceKey] || ''} onChange={(event) => updateSetting(voiceKey, event.target.value)}>
+                    {availableVoices.filter((voice) => voice.lang.toLowerCase().startsWith('fr')).length === 0
+                      ? <option value="">Aucune voix française détectée sur cet appareil</option>
+                      : availableVoices.filter((voice) => voice.lang.toLowerCase().startsWith('fr')).map((voice) => (
+                        <option key={voice.voiceURI} value={voice.voiceURI}>{voice.name} · {voice.lang}{voice.default ? ' · par défaut' : ''}</option>
+                      ))}
+                  </select>
+                  <button className="settings-primary-button" onClick={() => speakText(voiceKey === 'directVoice' ? 'Bonjour, je suis Hiera. Comment puis-je t’aider ?' : 'Bonjour, je suis Hiera. Voici un exemple de lecture à haute voix.', voiceKey)}>Écouter cette voix</button>
+                  {voiceKey === 'readVoice' && <><button className="settings-text-link" onClick={() => { window.speechSynthesis?.cancel(); setVoiceTestStatus('Lecture arrêtée'); }}>Arrêter la lecture</button>{voiceTestStatus && <small>{voiceTestStatus}</small>}</>}
+                </div>
+              ))}
+              <p className="settings-description">Les voix sont fournies gratuitement par le navigateur ou le système de ton appareil. Leur disponibilité dépend des voix françaises installées sur ton téléphone ou ton ordinateur. Aucun service Google Cloud ni clé API n'est nécessaire.</p>
             </div>}
             {settingsPage === 'personalization' && <div className="settings-detail"><div className="settings-feature-card"><strong>Nom de l'assistant</strong><input className="settings-select" maxLength={40} value={settingsValues.assistantName || 'Hiera'} onChange={(e) => updateSetting('assistantName',e.target.value)} /><p>Le nom choisi est transmis au modèle pour les prochaines réponses.</p></div><div className="settings-feature-card"><strong>Style de réponse</strong><select className="settings-select" value={settingsValues.replyStyle || 'friendly'} onChange={(e) => updateSetting('replyStyle',e.target.value)}><option value="friendly">Naturel et amical</option><option value="concise">Concis</option><option value="detailed">Détaillé</option></select><p>Le style choisi s'applique aux prochaines réponses.</p></div></div>}
             {settingsPage === 'companion' && <div className="settings-detail"><div className="settings-feature-card"><strong>Compagnon Hiera</strong><p>Le robot animé et ses animations ne sont pas encore intégrés à cette version. Cette rubrique restera informative jusqu'à ce que ces fonctions soient disponibles, plutôt que de proposer un interrupteur sans effet.</p></div></div>}
