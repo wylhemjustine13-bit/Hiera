@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "Hiera — Assistant IA",
+  "short_name": "Hiera",
+  "description": "Ton assistant d'intelligence artificielle.",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "fullscreen", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#171126",
+  "theme_color": "#171126",
+  "icons": [
+    {
+      "src": "/atom.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
