@@ -294,7 +294,7 @@ export default function App() {
             </div>}
             {settingsPage === 'usage' && <div className="settings-detail"><div className="settings-feature-card"><strong>Utilisation locale</strong><p>{conversations.length} conversation(s) enregistrée(s) sur cet appareil.</p><p>{conversations.reduce((n,c) => n+c.messages.length,0)} messages conservés dans l'historique local.</p></div></div>}
             {settingsPage === 'billing' && <div className="settings-detail billing-detail">
-              <p className="settings-description">Choisis le niveau de Hiera qui correspond à tes besoins. Les caractéristiques ci-dessous présentent les offres prévues.</p>
+              <p className="settings-description">Choisis le niveau de Hiera qui correspond à tes besoins. Les quatre offres sont prévues comme des abonnements payants, sans période d'essai.</p>
               <div className="billing-status"><span className="billing-status-dot" /><div><strong>Abonnements en préparation</strong><small>Aucun forfait n'est actuellement souscrit et aucun paiement n'est activé.</small></div></div>
               <div className="billing-plans">
                 <article className="billing-plan"><div className="billing-plan-top"><span className="billing-plan-icon">✦</span><span className="billing-plan-label">Essentiel</span></div><h2>Hiera Basic</h2><p className="billing-plan-summary">Pour les conversations du quotidien.</p><ul><li>Chat avec Hiera</li><li>Historique des conversations</li><li>Fonctions essentielles</li><li>Limites d'utilisation standard</li></ul><span className="billing-price">Prix à définir</span></article>
