@@ -416,9 +416,10 @@ const server = createServer(async (req, res) => {
       const familyStyle = body.familySafeMode === false
         ? ''
         : 'Privilégie des explications claires, respectueuses et adaptées à un public adolescent.';
+      const chatUser = readSession(req);
       const messages = [{
         role: 'system',
-        content: `Tu es ${assistantName}, un assistant IA utile, honnête et bienveillant. Réponds toujours en ${responseLanguage}, sauf si l'utilisateur demande explicitement une autre langue. ${responseStyle} ${familyStyle} N'invente pas de capacités ou d'actions que tu n'as pas réalisées. Respecte les règles de sécurité et refuse les demandes dangereuses.`,
+        content: `Tu es ${assistantName}, un assistant IA utile, honnête et bienveillant. Réponds toujours en ${responseLanguage}, sauf si l'utilisateur demande explicitement une autre langue. ${responseStyle} ${familyStyle} N'invente pas de capacités ou d'actions que tu n'as pas réalisées. Respecte les règles de sécurité et refuse les demandes dangereuses. Si l'outil Google Agenda est disponible, utilise-le pour répondre aux questions sur les rendez-vous. Ne prétends jamais avoir consulté l'agenda sans avoir réellement appelé l'outil. Pour toute création, modification ou suppression, demande d'abord une confirmation explicite et n'effectue aucune modification sans confirmation.`,
       }, ...body.messages.map((message) => {
         if (!['user', 'assistant'].includes(message?.role) || typeof message.content !== 'string') {
           throw new Error('Format de message invalide.');
@@ -426,27 +427,83 @@ const server = createServer(async (req, res) => {
         return { role: message.role, content: message.content.slice(0, 20000) };
       })];
 
-      const upstream = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
+      const calendarTools = chatUser ? [{
+        type: 'function',
+        function: {
+          name: 'list_calendar_events',
+          description: 'Consulte les rendez-vous du calendrier Google principal de l’utilisateur.',
+          parameters: {
+            type: 'object',
+            properties: {
+              days: { type: 'integer', minimum: 1, maximum: 90, description: 'Nombre de jours à consulter à partir de maintenant.' },
+            },
+            required: ['days'],
+            additionalProperties: false,
+          },
         },
-        body: JSON.stringify({
-          model,
-          messages,
-          max_completion_tokens: 1200,
-        }),
-      });
+      }] : undefined;
 
-      const result = await upstream.json().catch(() => ({}));
-      if (!upstream.ok) {
-        const message = result?.error?.message || 'Le fournisseur IA a refusé la demande.';
-        const status = upstream.status === 401 ? 502 : upstream.status === 429 ? 429 : 502;
-        return send(res, status, { error: message });
+      async function askGroq(chatMessages, includeTools = true) {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            messages: chatMessages,
+            ...(includeTools && calendarTools ? { tools: calendarTools, tool_choice: 'auto' } : {}),
+            max_completion_tokens: 1200,
+          }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const message = data?.error?.message || 'Le fournisseur IA a refusé la demande.';
+          const status = response.status === 401 ? 502 : response.status === 429 ? 429 : 502;
+          throw Object.assign(new Error(message), { status });
+        }
+        return data?.choices?.[0]?.message;
       }
 
-      const reply = result?.choices?.[0]?.message?.content;
+      let assistantMessage = await askGroq(messages);
+      if (Array.isArray(assistantMessage?.tool_calls) && assistantMessage.tool_calls.length) {
+        messages.push(assistantMessage);
+        for (const toolCall of assistantMessage.tool_calls.slice(0, 2)) {
+          const functionName = toolCall?.function?.name;
+          let toolResult;
+          if (functionName === 'list_calendar_events' && chatUser) {
+            try {
+              const args = JSON.parse(toolCall.function.arguments || '{}');
+              const days = Number.isInteger(args.days) ? Math.min(90, Math.max(1, args.days)) : 30;
+              const timeMin = new Date().toISOString();
+              const timeMax = new Date(Date.now() + days * 86400000).toISOString();
+              const params = new URLSearchParams({ timeMin, timeMax, singleEvents: 'true', orderBy: 'startTime', maxResults: '50' });
+              const calendarData = await calendarRequest(chatUser.sub, `calendars/primary/events?${params}`);
+              const events = (calendarData.items || []).map((event) => ({
+                title: event.summary || 'Sans titre',
+                start: event.start?.dateTime || event.start?.date || '',
+                end: event.end?.dateTime || event.end?.date || '',
+                location: event.location || '',
+                status: event.status || '',
+              }));
+              toolResult = { success: true, count: events.length, events };
+            } catch (error) {
+              toolResult = { success: false, error: error instanceof Error ? error.message : 'Impossible de consulter Google Agenda.' };
+            }
+          } else {
+            toolResult = { success: false, error: 'Outil de calendrier indisponible.' };
+          }
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(toolResult),
+          });
+        }
+        assistantMessage = await askGroq(messages, false);
+      }
+
+      const reply = assistantMessage?.content;
       if (typeof reply !== 'string' || !reply.trim()) {
         return send(res, 502, { error: 'La réponse du fournisseur était vide.' });
       }
