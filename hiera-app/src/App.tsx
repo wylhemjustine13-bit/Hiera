@@ -23,6 +23,7 @@ type HieraSpeechRecognition = {
 type GoogleUser = { email: string; name: string; picture: string };
 type Message = { role: 'assistant' | 'user'; content: string };
 type Conversation = { id: string; title: string; messages: Message[]; updatedAt: number; archived?: boolean };
+type HieraAttachment = { id: string; name: string; mimeType: string; size: number; dataUrl?: string; text?: string };
 
 function AtomLogo() {
   return <svg className="atom-logo" viewBox="0 0 64 64" aria-hidden="true">
@@ -42,6 +43,8 @@ export default function App() {
   const [showArchived, setShowArchived] = useState(false);
   const [settingsValues, setSettingsValues] = useState<Record<string, any>>(() => { try { return JSON.parse(localStorage.getItem('hiera-settings') || '{}'); } catch { return {}; } });
   const [draft, setDraft] = useState('');
+  const [attachments, setAttachments] = useState<HieraAttachment[]>([]);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   const [model, setModel] = useState(() => localStorage.getItem('hiera-model') || 'groq:openai/gpt-oss-20b');
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -209,15 +212,47 @@ export default function App() {
     startVoiceListening();
   }
 
-  async function sendText(content: string, fromVoice = false) {
+  async function addAttachments(fileList: FileList | null) {
+    if (!fileList?.length) return;
+    const incoming = Array.from(fileList);
+    const next: HieraAttachment[] = [];
+    for (const file of incoming) {
+      if (attachments.length + next.length >= 5) { setError('Tu peux joindre jusqu’à 5 fichiers par message.'); break; }
+      if (file.size > 2 * 1024 * 1024) { setError(`${file.name} dépasse la limite de 2 Mo.`); continue; }
+      if (file.type.startsWith('image/')) {
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { setError('Images acceptées : JPG, PNG et WebP.'); continue; }
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = () => reject(new Error('Lecture de l’image impossible.'));
+          reader.readAsDataURL(file);
+        });
+        next.push({ id: crypto.randomUUID(), name: file.name, mimeType: file.type, size: file.size, dataUrl });
+      } else if (['text/plain', 'text/markdown', 'text/csv', 'application/json'].includes(file.type) || /\.(txt|md|csv|json)$/i.test(file.name)) {
+        const text = await file.text();
+        next.push({ id: crypto.randomUUID(), name: file.name, mimeType: file.type || 'text/plain', size: file.size, text: text.slice(0, 50000) });
+      } else {
+        setError(`Format non pris en charge pour l’instant : ${file.name}. Utilise une image, TXT, MD, CSV ou JSON.`);
+      }
+    }
+    if (next.length) { setAttachments((current) => [...current, ...next]); setError(''); }
+    if (attachmentInputRef.current) attachmentInputRef.current.value = '';
+  }
+
+  function removeAttachment(id: string) {
+    setAttachments((current) => current.filter((item) => item.id !== id));
+  }
+
+  async function sendText(content: string, fromVoice = false, includedAttachments: HieraAttachment[] = []) {
     const clean = content.trim();
-    if (!clean || busyRef.current) return;
+    if ((!clean && !includedAttachments.length) || busyRef.current) return;
     const nextMessages: Message[] = [...messagesRef.current, { role: 'user', content: clean }];
     messagesRef.current = nextMessages;
     busyRef.current = true;
     setMessages(nextMessages);
     persistConversation(nextMessages);
     setDraft('');
+    if (includedAttachments.length) setAttachments([]);
     setError('');
     setBusy(true);
     if (fromVoice) setVoiceStatus('Hiera prépare sa réponse…');
@@ -232,6 +267,7 @@ export default function App() {
           assistantName: settingsValues.assistantName || 'Hiera',
           replyStyle: settingsValues.replyStyle || 'friendly',
           messages: nextMessages.map(({ role, content: text }) => ({ role, content: text })),
+          attachments: includedAttachments.map(({ name, mimeType, dataUrl, text }) => ({ name, mimeType, dataUrl, text })),
         }),
       });
       const data = await response.json();
@@ -263,7 +299,7 @@ export default function App() {
 
   async function sendMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await sendText(draft);
+    await sendText(draft, false, attachments);
   }
 
   function newConversation() {
@@ -434,9 +470,12 @@ export default function App() {
               </div>
             </div>
             <form className="composer" onSubmit={sendMessage}>
+              <input ref={attachmentInputRef} className="attachment-input" type="file" accept="image/jpeg,image/png,image/webp,.txt,.md,.csv,.json,text/plain,text/markdown,text/csv,application/json" multiple onChange={(event) => { void addAttachments(event.target.files); }} />
+              {attachments.length > 0 && <div className="attachment-list">{attachments.map((item) => <div className="attachment-chip" key={item.id}>{item.dataUrl ? <img src={item.dataUrl} alt={item.name} /> : <span className="attachment-file-icon">▤</span>}<span title={item.name}>{item.name}</span><button type="button" onClick={() => removeAttachment(item.id)} aria-label={`Retirer ${item.name}`}>×</button></div>)}</div>}
               <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { const enterBehavior = settingsValues.enterBehavior || (settingsValues.enterToSend === false ? 'newline' : 'send'); if (event.key === "Enter" && !event.shiftKey && enterBehavior === 'send') { event.preventDefault(); (event.currentTarget.form as HTMLFormElement)?.requestSubmit(); } }} placeholder="Écris un message à Hiera…" rows={1} aria-label="Message à Hiera" disabled={busy} />
               {error && <p className="error-message" role="alert">{error}</p>}
-              <div className="composer-footer"><span>Pose ta question à Hiera</span><div className="composer-actions"><button type="button" className={liveVoice ? 'voice-toggle active' : 'voice-toggle'} onClick={liveVoice ? stopLiveVoice : startLiveVoice} aria-label={liveVoice ? 'Arrêter la conversation vocale' : 'Démarrer la conversation vocale'}>{liveVoice ? '■' : '🎙️'}</button><button type="submit" disabled={!draft.trim() || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div></div>{liveVoice && <p className="voice-status" role="status">{voiceStatus} · Micro actif uniquement pendant l'écoute. <button type="button" onClick={stopLiveVoice}>Arrêter</button></p>}
+              <div className="composer-footer"><span>Pose ta question à Hiera</span><div className="composer-actions"><button type="button" className="attach-toggle" onClick={() => attachmentInputRef.current?.click()} disabled={busy} aria-label="Joindre une photo ou un fichier" title="Joindre une photo ou un fichier">＋</button><button type="button" className={liveVoice ? 'voice-toggle active' : 'voice-toggle'} onClick={liveVoice ? stopLiveVoice : startLiveVoice} aria-label={liveVoice ? 'Arrêter la conversation vocale' : 'Démarrer la conversation vocale'}>{liveVoice ? '■' : '🎙️'}</button><button type="submit" disabled={(!draft.trim() && !attachments.length) || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div></div>{liveVoice && <p className="voice-status" role="status">{voiceStatus} · Micro actif uniquement pendant l'écoute. <button type="button" onClick={stopLiveVoice}>Arrêter</button></p>}
+              <p className="attachment-hint">Photos JPG, PNG, WebP · fichiers TXT, MD, CSV, JSON · 2 Mo maximum chacun</p>
             </form>
             <p className="disclaimer">Ne partage jamais de données personnelles ou confidentielles dans une conversation.</p>
           </>
