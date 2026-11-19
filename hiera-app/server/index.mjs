@@ -221,21 +221,25 @@ const server = createServer(async (req, res) => {
           nextPlan = event.type === 'customer.subscription.deleted' || !['active', 'trialing'].includes(object.status) ? 'basic' : plan;
         }
       }
-      await pool.query('BEGIN');
+      const client = await pool.connect();
       try {
-        await pool.query('INSERT INTO hiera_billing_events (event_id) VALUES ($1)', [event.id]);
+        await client.query('BEGIN');
+        await client.query('INSERT INTO hiera_billing_events (event_id) VALUES ($1)', [event.id]);
         if (userId && nextPlan) {
-          await pool.query(
+          await client.query(
             `INSERT INTO hiera_usage (user_id, plan, period_started_at, message_count, token_count, voice_seconds)
              VALUES ($1, $2, NOW(), 0, 0, 0)
              ON CONFLICT (user_id) DO UPDATE SET plan = EXCLUDED.plan`,
             [userId, nextPlan],
           );
         }
-        await pool.query('COMMIT');
+        await client.query('COMMIT');
       } catch (dbError) {
-        await pool.query('ROLLBACK');
+        await client.query('ROLLBACK');
+        if (dbError?.code === '23505') return send(res, 200, { received: true, duplicate: true });
         throw dbError;
+      } finally {
+        client.release();
       }
       return send(res, 200, { received: true });
     } catch (billingError) {
