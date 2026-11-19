@@ -534,6 +534,22 @@ const server = createServer(async (req, res) => {
       }
 
 
+      const calendarTools = [{
+        type: 'function',
+        function: {
+          name: 'list_calendar_events',
+          description: 'Consulter les rendez-vous Google Agenda de l’utilisateur sur les prochains jours.',
+          parameters: {
+            type: 'object',
+            properties: {
+              days: { type: 'integer', minimum: 1, maximum: 90, description: 'Nombre de jours à consulter.' },
+            },
+            required: ['days'],
+            additionalProperties: false,
+          },
+        },
+      }];
+
       async function askGroq(chatMessages, includeTools = true) {
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
