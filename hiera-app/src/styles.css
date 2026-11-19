@@ -762,3 +762,83 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 .formatted-message blockquote { margin: .8em 0; padding: .55em .9em; border-left: 3px solid var(--accent, #a78bfa); background: rgba(167,139,250,.08); border-radius: 0 8px 8px 0; }
 .formatted-message mark { background: #fff09a; color: #27210a; border-radius: 3px; padding: 0 .15em; }
 .formatted-message hr { border: 0; border-top: 1px solid var(--border, rgba(127,127,127,.25)); margin: 1em 0; }
+
+
+/* Redesign de la barre de saisie Hiera */
+.composer{
+  max-width:900px;
+  padding:14px 16px 11px;
+  border:1px solid #8e65c966;
+  border-radius:25px;
+  background:linear-gradient(145deg,#17102b 0%,#100d20 65%,#17102a 100%);
+  box-shadow:0 10px 38px #0005, inset 0 1px 0 #ffffff0d;
+  transition:border-color .2s ease,box-shadow .2s ease;
+}
+.composer:focus-within{
+  border-color:#b17aff;
+  box-shadow:0 0 0 3px #9c5cff20,0 12px 42px #0006;
+}
+.composer textarea{
+  min-height:54px;
+  max-height:180px;
+  padding:8px 5px 12px;
+  line-height:1.55;
+  font-size:15px;
+}
+.composer-footer{
+  padding-top:9px;
+  border-top:1px solid #ffffff12;
+  color:#a99abc;
+  font-size:11px;
+}
+.composer-footer span{letter-spacing:.01em}
+.composer-actions{gap:9px}
+.composer-actions button{
+  width:39px;height:39px;border-radius:14px;
+  transition:transform .16s ease,background .16s ease,box-shadow .16s ease;
+}
+.composer-actions button:hover:not(:disabled){transform:translateY(-2px)}
+.composer-actions .attach-toggle{
+  background:#ffffff08;
+  border:1px solid #ffffff20;
+  color:#d9c4f7;
+  font-size:24px;
+}
+.composer-actions .voice-toggle{
+  background:#ffffff08;
+  border:1px solid #ffffff20;
+  color:#ddc9fa;
+}
+.composer-actions button[type="submit"]{
+  width:43px;height:43px;border-radius:15px;
+  background:linear-gradient(145deg,#bd83ff,#793be2);
+  box-shadow:0 5px 17px #8d4de755;
+  font-size:23px;
+}
+.composer-actions .stop-generation{
+  width:auto;height:35px;padding:0 12px;border-radius:12px;
+  background:#a33c63;border:1px solid #d76a8f55;font-size:11px;
+}
+.attachment-hint{margin:8px 3px 0;font-size:10px;opacity:.8}
+.attachment-list{margin-bottom:10px}
+:root[data-theme="light"] .composer{
+  background:linear-gradient(145deg,#fff 0%,#faf7ff 100%);
+  border-color:#c9b2e8;
+  box-shadow:0 9px 30px #4a2b6b12,inset 0 1px 0 #fff;
+}
+:root[data-theme="light"] .composer:focus-within{
+  border-color:#9160c9;box-shadow:0 0 0 3px #9160c91c,0 10px 30px #4a2b6b12;
+}
+:root[data-theme="light"] .composer-footer{border-top-color:#28133a14;color:#766783}
+:root[data-theme="light"] .composer-actions .attach-toggle,
+:root[data-theme="light"] .composer-actions .voice-toggle{background:#f5effb;border-color:#ddcce9;color:#654b7c}
+@media(max-width:650px){
+  .composer{padding:11px 12px 9px;border-radius:21px}
+  .composer textarea{min-height:48px;font-size:16px;padding:6px 3px 10px}
+  .composer-footer{padding-top:8px;gap:8px}
+  .composer-actions{gap:6px}
+  .composer-actions button{width:36px;height:36px;border-radius:12px}
+  .composer-actions button[type="submit"]{width:40px;height:40px;border-radius:13px}
+  .composer-actions .stop-generation{width:auto;height:34px;padding:0 9px}
+  .attachment-hint{font-size:9px}
+}
