@@ -18,7 +18,8 @@ function inline(text: string, prefix = 'x'): React.ReactNode[] {
     else if (match[5] !== undefined) result.push(<u key={key}>{inline(match[5], key)}</u>);
     else if (match[6] !== undefined || match[7] !== undefined) result.push(<strong key={key}>{inline(match[6] ?? match[7], key)}</strong>);
     else if (match[8] !== undefined || match[9] !== undefined) result.push(<em key={key}>{inline(match[8] ?? match[9], key)}</em>);
-    else if (match[10] !== undefined) result.push(<del key={key}>{inline(match[10], key)}</del>);\n    else if (match[11] !== undefined) result.push(<mark key={key}>{inline(match[11], key)}</mark>);
+    else if (match[10] !== undefined) result.push(<del key={key}>{inline(match[10], key)}</del>);
+    else if (match[11] !== undefined) result.push(<mark key={key}>{inline(match[11], key)}</mark>);
     cursor = pattern.lastIndex;
   }
   if (cursor < text.length) result.push(text.slice(cursor));
