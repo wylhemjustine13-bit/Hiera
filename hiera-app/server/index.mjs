@@ -16,7 +16,7 @@ if (existsSync(envPath)) {
 }
 
 const PORT = Number(process.env.PORT || process.env.HIERA_API_PORT || 3001);
-const MAX_BODY = 12 * 1024 * 1024;
+const MAX_BODY = 48 * 1024 * 1024;
 const groqModels = new Set(['openai/gpt-oss-20b', 'openai/gpt-oss-120b']);
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const ACCESS_PASSWORD = process.env.HIERA_ACCESS_PASSWORD;
@@ -405,8 +405,8 @@ const server = createServer(async (req, res) => {
       const imageAttachments = attachments.filter((item) => typeof item?.dataUrl === 'string');
       if (imageAttachments.length > 3) return send(res, 400, { error: 'Tu peux joindre au maximum 3 images par message.' });
       for (const item of imageAttachments) {
-        if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(item.dataUrl) || item.dataUrl.length > 2_900_000) {
-          return send(res, 400, { error: 'Image invalide ou trop volumineuse. Limite : 2 Mo par image, en JPG, PNG ou WebP.' });
+        if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(item.dataUrl) || item.dataUrl.length > 14_000_000) {
+          return send(res, 400, { error: 'Image invalide ou trop volumineuse. Limite : 10 Mo par image, en JPG, PNG ou WebP.' });
         }
       }
       const model = imageAttachments.length ? 'qwen/qwen3.8-27b' : requestedModel;
