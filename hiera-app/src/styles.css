@@ -985,3 +985,46 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
   .admin-tools-row, .admin-user-row, .admin-reset-list article { align-items:stretch; flex-direction:column; }
   .admin-user-controls { justify-content:flex-start; }
 }
+
+
+/* Consentement d'aide et alertes de modération */
+.admin-user-alert {
+  border-color: rgba(255, 65, 75, .85) !important;
+  background: rgba(175, 24, 38, .12) !important;
+  animation: hiera-alert-pulse 1.25s ease-in-out infinite;
+}
+.admin-alert-pill {
+  display:inline-flex; align-items:center; margin-left:6px; padding:3px 7px;
+  border-radius:999px; color:#ffd5d8; background:rgba(210,35,50,.22);
+  border:1px solid rgba(255,90,100,.55); font-size:.72rem; font-weight:700;
+}
+@keyframes hiera-alert-pulse {
+  0%,100% { box-shadow:0 0 0 rgba(255,45,60,0); }
+  50% { box-shadow:0 0 15px rgba(255,45,60,.28); }
+}
+.admin-help-button {
+  padding:7px 10px; border:1px solid rgba(170,135,255,.4); border-radius:9px;
+  color:#e6d9ff; background:rgba(145,100,220,.17); cursor:pointer;
+}
+.admin-help-button:disabled { opacity:.6; cursor:default; }
+.help-consent-overlay {
+  position:fixed; inset:0; z-index:1200; display:grid; place-items:center;
+  padding:18px; background:rgba(7,5,13,.78); backdrop-filter:blur(9px);
+}
+.help-consent-card {
+  width:min(560px,100%); max-height:min(88vh,780px); overflow:auto;
+  padding:24px; border:1px solid rgba(184,150,255,.3); border-radius:20px;
+  color:var(--text,#f5f0ff); background:var(--panel,#201a2c);
+  box-shadow:0 24px 80px rgba(0,0,0,.45);
+}
+.help-consent-card h2 { margin:8px 0 12px; }
+.help-consent-card p { line-height:1.55; color:var(--muted,#b5acc5); }
+.help-consent-expiry { font-size:.84rem; }
+.help-consent-card > div:last-of-type { display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
+.shared-help-card { width:min(760px,100%); }
+.shared-help-messages { display:grid; gap:10px; max-height:48vh; overflow:auto; margin:16px 0; }
+.shared-help-messages article { padding:12px; border-radius:12px; background:rgba(255,255,255,.045); }
+.shared-help-messages article p { white-space:pre-wrap; overflow-wrap:anywhere; margin:6px 0 0; color:var(--text,#f5f0ff); }
+@media (prefers-reduced-motion: reduce) {
+  .admin-user-alert { animation:none; }
+}
