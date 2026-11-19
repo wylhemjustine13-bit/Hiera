@@ -915,3 +915,11 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 :root[data-theme="light"] .plan-badge.plan-pro{color:#65418b}
 :root[data-theme="light"] .plan-badge.plan-ultimate{color:#89641b}
 @media(max-width:650px){.plan-badge{margin-left:auto;padding:6px 9px;font-size:10px}.fullscreen-toggle{margin-left:0}}
+
+/* Navigation privée */
+.private-toggle{border:1px solid #ffffff26;background:#ffffff0a;color:#d9c9ef;border-radius:18px;padding:8px 12px;font:inherit;font-size:11px;white-space:nowrap;cursor:pointer}
+.private-toggle:hover,.private-toggle.active{border-color:#b78af0;background:#8c52d522;color:#e9d8ff}
+.private-notice{margin:10px auto 0;padding:9px 13px;border:1px solid #a77bdb66;border-radius:12px;background:#8c52d514;color:#cbb1ed;font-size:11px;text-align:center}
+:root[data-theme="light"] .private-toggle{color:#5e426f;border-color:#241b3022;background:#241b3008}
+:root[data-theme="light"] .private-toggle.active{color:#65418b;border-color:#b58be8;background:#8c52d514}
+@media(max-width:650px){.private-toggle{padding:7px 9px;font-size:10px}}
