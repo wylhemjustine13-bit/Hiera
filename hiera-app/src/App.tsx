@@ -67,6 +67,11 @@ export default function App() {
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [calendarNotice, setCalendarNotice] = useState('');
   const [authError, setAuthError] = useState('');
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authName, setAuthName] = useState('');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authBusy, setAuthBusy] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsPage, setSettingsPage] = useState('home');
   const [wellbeingSection, setWellbeingSection] = useState<'security' | 'privacy'>('security');
@@ -196,10 +201,24 @@ export default function App() {
     }
   }
 
+  async function submitEmailAuth(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setAuthBusy(true); setAuthError('');
+    try {
+      const response = await fetch(authMode === 'register' ? '/api/auth/register' : '/api/auth/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: authName, email: authEmail, password: authPassword }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Connexion impossible.');
+      setGoogleUser(data.user); setAuthPassword('');
+    } catch (err) { setAuthError(err instanceof Error ? err.message : 'Connexion impossible.'); }
+    finally { setAuthBusy(false); }
+  }
+
   async function logoutGoogle() {
     await fetch('/api/auth/logout', { method: 'POST' });
     window.google?.accounts.id.disableAutoSelect();
-    setGoogleUser(null);
+    setGoogleUser(null); setSettingsOpen(false); setSettingsPage('home');
   }
 
   async function copyMessage(content: string, index: number) {
@@ -386,6 +405,32 @@ export default function App() {
 
   const settingsItems = [["account","Compte et connexion","Compte Google, session et profil","◉"],["parental","Contrôle parental","Préférences de réponse et ressources familiales","⌂"],["wellbeing","Sécurité et bien-être","Sécurité du compte et protection des données","♡"],["usage","Utilisation","Activité et statistiques locales","▤"],["billing","Facturation","État des achats et abonnements","€"],["general","Général","Langue et comportement de la touche Entrée","⚙"],["theme","Thème","Apparence claire ou sombre","◐"],["notifications","Notifications","Préférences de notification","♢"],["voice","Voix","Lecture vocale des réponses","♫"],["personalization","Personnalisation","Nom et style de Hiera","✧"],["companion","Compagnon","État des fonctions du compagnon","◉"],["history","Chats et archivés","Historique et conversations archivées","▣"],["storage","Stockage et données","Gestion des conversations locales","▤"],["plugins","Plugins","Extensions disponibles","▦"],["preferences","Modèles IA","Choix du modèle de conversation","✧"]];
   const settingsTitles: Record<string, string> = Object.fromEntries([['home','Paramètres'], ...settingsItems.map(([id,title]) => [id,title])]);
+
+  if (!googleUser) {
+    return (
+      <main className="auth-screen">
+        <section className="auth-card">
+          <div className="auth-brand"><AtomLogo /><span>Hiera</span></div>
+          <p className="auth-eyebrow">TON ESPACE PERSONNEL</p>
+          <h1>{authMode === 'register' ? 'Créer un compte' : 'Bon retour'}</h1>
+          <p className="auth-description">{authMode === 'register' ? 'Inscris-toi pour commencer à utiliser Hiera.' : 'Connecte-toi pour retrouver ton espace Hiera.'}</p>
+          <form className="auth-form" onSubmit={submitEmailAuth}>
+            {authMode === 'register' && <label>Nom affiché<input autoComplete="name" value={authName} onChange={(e) => setAuthName(e.target.value)} minLength={2} maxLength={80} required placeholder="Ton nom" /></label>}
+            <label>Adresse e-mail<input type="email" autoComplete="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} required placeholder="nom@exemple.com" /></label>
+            <label>Mot de passe<input type="password" autoComplete={authMode === 'register' ? 'new-password' : 'current-password'} value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} minLength={10} maxLength={128} required placeholder="10 caractères minimum" /></label>
+            {authMode === 'register' && <small className="auth-password-hint">Utilise un mot de passe unique d'au moins 10 caractères.</small>}
+            {authError && <p className="auth-form-error" role="alert">{authError}</p>}
+            <button className="auth-submit" type="submit" disabled={authBusy}>{authBusy ? 'Patiente…' : authMode === 'register' ? 'Créer mon compte' : 'Se connecter'}</button>
+          </form>
+          <div className="auth-divider"><span>ou</span></div>
+          <div className="google-login auth-google-login" ref={googleButtonRef} />
+          {!googleClientId && <p className="auth-form-hint">La connexion Google doit être configurée dans les variables Render.</p>}
+          <p className="auth-switch">{authMode === 'register' ? 'Tu as déjà un compte ?' : 'Pas encore de compte ?'} <button type="button" onClick={() => { setAuthMode(authMode === 'register' ? 'login' : 'register'); setAuthError(''); }}>{authMode === 'register' ? 'Se connecter' : 'Créer un compte'}</button></p>
+          <p className="auth-legal">Garde ton mot de passe confidentiel et ne le partage avec personne.</p>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className={`shell ${sidebarOpen ? "" : "sidebar-collapsed"}`}>
