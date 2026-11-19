@@ -1013,7 +1013,7 @@ const server = createServer(async (req, res) => {
   }
 
   const adminUser = readSession(req);
-  const adminPaths = ['/api/admin/me', '/api/admin/overview', '/api/admin/account', '/api/admin/reset-request/resolve', '/api/admin/help/request', '/api/admin/help/view', '/api/admin/help/close'];
+  const adminPaths = ['/api/admin/me', '/api/admin/overview', '/api/admin/account', '/api/admin/reset-request/resolve', '/api/admin/help/request', '/api/admin/help/view', '/api/admin/help/close', '/api/admin/safety/review'];
   if (adminPaths.includes(url.pathname)) {
     if (!adminUser) return send(res, 401, { error: 'Connecte-toi pour accéder à Hiera Control.' });
     const allowedAdmins = (process.env.HIERA_ADMIN_EMAILS || '').split(',').map((email) => email.trim().toLowerCase()).filter(Boolean);
@@ -1091,6 +1091,13 @@ const server = createServer(async (req, res) => {
         const id = Number(body.id);
         if (!Number.isSafeInteger(id) || id <= 0) return send(res, 400, { error: 'Demande invalide.' });
         await pool.query("UPDATE hiera_help_requests SET status = 'closed', shared_messages = NULL, closed_at = NOW() WHERE id = $1 AND status IN ('approved','declined','pending')", [id]);
+        return send(res, 200, { ok: true });
+      }
+      if (req.method === 'POST' && url.pathname === '/api/admin/safety/review') {
+        const body = await readJson(req);
+        const id = Number(body.id);
+        if (!Number.isSafeInteger(id) || id <= 0) return send(res, 400, { error: 'Signalement invalide.' });
+        await pool.query('UPDATE hiera_safety_flags SET reviewed_at = NOW() WHERE id = $1 AND reviewed_at IS NULL', [id]);
         return send(res, 200, { ok: true });
       }
       if (req.method !== 'GET' || url.pathname !== '/api/admin/overview') return send(res, 405, { error: 'Méthode non autorisée.' });
