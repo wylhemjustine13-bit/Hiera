@@ -623,3 +623,16 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 :root[data-theme="light"] .billing-price{color:#563875;border-color:#e8def1}
 :root[data-theme="light"] .billing-footnote{color:#756982}
 @media(max-width:520px){.billing-plans{grid-template-columns:1fr}.billing-plan{padding:15px}.billing-plan h2{font-size:19px}}
+
+
+/* Voice conversation controls */
+.composer-actions{display:flex;align-items:center;gap:8px}
+.composer-actions button{display:grid;place-items:center;width:38px;height:38px;border:0;border-radius:12px;background:linear-gradient(135deg,#8b55d8,#5e39aa);color:#fff;font-size:16px;cursor:pointer}
+.composer-actions button:disabled{opacity:.45;cursor:not-allowed}
+.composer-actions .voice-toggle{border:1px solid #9b78c855;background:#ffffff0a;color:#d9c3fa}
+.composer-actions .voice-toggle.active{background:#a33c63;color:#fff;border-color:#d76a8f;box-shadow:0 0 0 4px #d76a8f20}
+.voice-status{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin:7px 2px 0;color:#cbb8e5;font-size:10px}
+.voice-status button{border:0;background:transparent;color:#e9cfff;text-decoration:underline;cursor:pointer;font-size:10px}
+:root[data-theme="light"] .composer-actions .voice-toggle{color:#654b7c;background:#fff;border-color:#bda7d7}
+:root[data-theme="light"] .voice-status{color:#654b7c}
+:root[data-theme="light"] .voice-status button{color:#563875}
