@@ -446,53 +446,36 @@ const server = createServer(async (req, res) => {
       }
       try {
         await ensureUsageTable();
+        const messageLimits = { basic: 100, plus: 300, pro: 1200, ultimate: 3000 };
+        const tokenBudgets = { basic: 50000, plus: 150000, pro: 500000, ultimate: 1500000 };
         const usage = await pool.query(
           `INSERT INTO hiera_usage (user_id, plan, period_started_at, message_count, token_count)
            VALUES ($1, 'basic', NOW(), 1, 0)
            ON CONFLICT (user_id) DO UPDATE SET
-             period_started_at = CASE
-               WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN NOW()
-               ELSE hiera_usage.period_started_at
-             END,
-             message_count = CASE
-               WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 1
-               ELSE hiera_usage.message_count + 1
-             END,
-             token_count = CASE
-               WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 0
-               ELSE hiera_usage.token_count
-             END
-           WHERE CASE
-             WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 0
-             ELSE hiera_usage.message_count
-           END < 100
+             period_started_at = CASE WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN NOW() ELSE hiera_usage.period_started_at END,
+             message_count = CASE WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 1 ELSE hiera_usage.message_count + 1 END,
+             token_count = CASE WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 0 ELSE hiera_usage.token_count END
+           WHERE
+             (CASE WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 0 ELSE hiera_usage.message_count END) <
+               CASE hiera_usage.plan WHEN 'plus' THEN 300 WHEN 'pro' THEN 1200 WHEN 'ultimate' THEN 3000 ELSE 100 END
+             AND
+             (CASE WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 0 ELSE hiera_usage.token_count END) <
+               CASE hiera_usage.plan WHEN 'plus' THEN 150000 WHEN 'pro' THEN 500000 WHEN 'ultimate' THEN 1500000 ELSE 50000 END
            RETURNING message_count, period_started_at, token_count, plan`,
           [chatUser.sub],
         );
         if (!usage.rowCount) {
-          const current = await pool.query('SELECT period_started_at FROM hiera_usage WHERE user_id = $1', [chatUser.sub]);
-          return send(res, 429, {
-            error: 'Tu as atteint la limite de 100 messages de Hiera Basic. Ton quota sera renouvelé 24 heures après le début de ta période.',
-            resetAt: current.rows[0]?.period_started_at ? new Date(new Date(current.rows[0].period_started_at).getTime() + 24 * 60 * 60 * 1000).toISOString() : null,
-            plan: 'basic',
-            limit: 100,
-          });
+          const current = await pool.query('SELECT plan, period_started_at, message_count, token_count FROM hiera_usage WHERE user_id = $1', [chatUser.sub]);
+          const row = current.rows[0] || { plan: 'basic', message_count: 0, token_count: 0 };
+          const activePlan = messageLimits[row.plan] ? row.plan : 'basic';
+          const resetAt = row.period_started_at ? new Date(new Date(row.period_started_at).getTime() + 24 * 60 * 60 * 1000).toISOString() : null;
+          if (Number(row.token_count || 0) >= tokenBudgets[activePlan]) return send(res, 429, { error: `Tu as atteint le budget de ${tokenBudgets[activePlan].toLocaleString('fr-FR')} jetons de Hiera ${activePlan}.`, plan: activePlan, tokenBudget: tokenBudgets[activePlan], tokensUsed: Number(row.token_count || 0), tokensRemaining: 0, resetAt });
+          return send(res, 429, { error: `Tu as atteint la limite de ${messageLimits[activePlan].toLocaleString('fr-FR')} messages de Hiera ${activePlan}.`, resetAt, plan: activePlan, limit: messageLimits[activePlan] });
         }
         const activeUsage = usage.rows[0];
-        const tokenBudgets = { basic: 50000, plus: 150000, pro: 500000, ultimate: 1500000 };
         const activePlan = tokenBudgets[activeUsage.plan] ? activeUsage.plan : 'basic';
         const tokenBudget = tokenBudgets[activePlan];
         const tokensAlreadyUsed = Number(activeUsage.token_count || 0);
-        if (tokensAlreadyUsed >= tokenBudget) {
-          return send(res, 429, {
-            error: `Tu as atteint le budget de ${tokenBudget.toLocaleString('fr-FR')} jetons de Hiera ${activePlan}. Ton budget sera renouvelé à la fin de ta période de 24 heures.`,
-            plan: activePlan,
-            tokenBudget,
-            tokensUsed: tokensAlreadyUsed,
-            tokensRemaining: 0,
-            resetAt: new Date(new Date(activeUsage.period_started_at).getTime() + 24 * 60 * 60 * 1000).toISOString(),
-          });
-        }
       } catch (quotaError) {
         console.error('Hiera usage quota failed:', quotaError instanceof Error ? quotaError.message : 'unknown error');
         return send(res, 503, { error: 'Impossible de vérifier ton quota. Vérifie la base de données de Hiera puis réessaie.' });
