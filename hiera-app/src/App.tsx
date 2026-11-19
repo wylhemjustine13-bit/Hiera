@@ -53,6 +53,9 @@ export default function App() {
   const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
   const [tokenUsage, setTokenUsage] = useState<{ plan: string; tokensUsed: number; tokensUsedTotal: number; tokenBudget: number; tokensRemaining: number } | null>(null);
   const [billingSelection, setBillingSelection] = useState<{ name: string; price: string } | null>(null);
+  const [recoveryCode, setRecoveryCode] = useState('');
+  const [recoveryStatus, setRecoveryStatus] = useState('');
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
   const [liveVoice, setLiveVoice] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState('Mode vocal désactivé');
   const recognitionRef = useRef<HieraSpeechRecognition | null>(null);
@@ -164,6 +167,34 @@ export default function App() {
     }
     return () => { active = false; };
   }, [googleClientId, settingsOpen, settingsPage]);
+
+  async function redeemRecoveryCode() {
+    if (!billingSelection || !['Hiera Plus', 'Hiera Pro', 'Hiera Ultimate'].includes(billingSelection.name)) {
+      setRecoveryStatus('Choisis d’abord Plus, Pro ou Ultimate.');
+      return;
+    }
+    setRecoveryBusy(true);
+    setRecoveryStatus('');
+    try {
+      const plan = billingSelection.name.replace('Hiera ', '').toLowerCase();
+      const response = await fetch('/api/billing/redeem-recovery-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: recoveryCode, plan }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Activation impossible.');
+      setRecoveryStatus(data.message || 'Forfait activé.');
+      setRecoveryCode('');
+      setBillingSelection(null);
+      const usage = await fetch('/api/usage').then((r) => r.ok ? r.json() : null).catch(() => null);
+      if (usage) setTokenUsage(usage);
+    } catch (err) {
+      setRecoveryStatus(err instanceof Error ? err.message : 'Activation impossible.');
+    } finally {
+      setRecoveryBusy(false);
+    }
+  }
 
   async function logoutGoogle() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -452,7 +483,7 @@ export default function App() {
                 <article className="billing-plan"><div className="billing-plan-top"><span className="billing-plan-icon">✺</span><span className="billing-plan-label">Complet</span></div><h2>Hiera Ultimate</h2><p className="billing-plan-summary">L'offre la plus complète de Hiera.</p><ul><li>3 000 messages par période de 24 h</li><li>Budget : 1 500 000 jetons par période de 24 h</li><li>Message simple : environ 100 jetons en moyenne</li><li>Photo, fichier et analyse : consommation réelle selon le contenu</li><li>Mode vocal : 5 h par période de 24 h</li><li>Souvenirs sans quota fixe (fonction à intégrer)</li><li>Historique sans durée fixe (fonction à intégrer)</li><li>Personnalisation maximale et priorité</li></ul><span className="billing-price">56,99 € / mois</span><button className="billing-select-button" type="button" onClick={() => setBillingSelection({ name: 'Hiera Ultimate', price: '56,99 € / mois' })}>Sélectionner Ultimate</button></article>
               </div>
               <p className="billing-footnote">Les budgets de jetons sont débités selon l'utilisation réelle déclarée par le fournisseur IA : texte d'entrée, réponse, images et analyses. 100 jetons par message simple est une estimation, pas un tarif fixe. Les périodes de quota durent 24 h à partir de la première utilisation. Les abonnements payants sont annoncés mais aucun paiement ni essai gratuit n'est activé. Les limites de mémoire, d'historique et de voix affichées décrivent les offres prévues ; leur contrôle technique sera ajouté avant l'ouverture des abonnements.</p>
-               {billingSelection && <div className="billing-checkout-panel"><div><span className="billing-checkout-kicker">RÉCAPITULATIF DU FORFAIT</span><strong>{billingSelection.name}</strong><b>{billingSelection.price}</b></div><p>La prochaine étape sera le paiement sécurisé par carte bancaire. Elle n'est pas encore disponible : aucun numéro de carte, cryptogramme ou autre donnée bancaire ne doit être saisi ou envoyé à Hiera pour le moment.</p><button className="billing-select-button" type="button" onClick={() => setBillingSelection(null)}>Fermer le récapitulatif</button></div>}
+               {billingSelection && <div className="billing-checkout-panel"><div><span className="billing-checkout-kicker">RÉCAPITULATIF DU FORFAIT</span><strong>{billingSelection.name}</strong><b>{billingSelection.price}</b></div><p>Pour cette phase de test, tu peux demander l’activation du forfait choisi avec le code de récupération provisoire. Il ne s’agit pas d’un paiement et il est limité à 10 comptes.</p><label className="recovery-code-label">Code de récupération<input className="recovery-code-input" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value.replace(/\\D/g, '').slice(0, 6))} placeholder="6 chiffres" /></label><button className="billing-select-button" type="button" disabled={recoveryBusy || recoveryCode.length !== 6} onClick={redeemRecoveryCode}>{recoveryBusy ? 'Vérification…' : 'Activer le forfait choisi'}</button>{recoveryStatus && <p className="recovery-code-status" role="status">{recoveryStatus}</p>}<button className="billing-select-button" type="button" onClick={() => { setBillingSelection(null); setRecoveryStatus(''); setRecoveryCode(''); }}>Fermer le récapitulatif</button></div>}
             </div>}
             {settingsPage === 'general' && <div className="settings-detail">
               <div className="settings-feature-card">
