@@ -573,3 +573,22 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
   .sidebar-primary-nav .side-link span{display:inline-flex;align-items:center;justify-content:center}
   .sidebar .history-heading{margin-top:12px}
 }
+
+
+/* Hiera ambient motion and bubble-free assistant replies */
+.workspace{isolation:isolate}
+.workspace::before,.workspace::after{content:"";position:absolute;inset:-18%;pointer-events:none;z-index:0;border-radius:50%;filter:blur(55px);opacity:.28}
+.workspace::before{background:radial-gradient(ellipse at 28% 28%,#8d42ff55 0%,transparent 42%),radial-gradient(ellipse at 78% 70%,#3476ff35 0%,transparent 38%);animation:hiera-drift-one 22s ease-in-out infinite alternate}
+.workspace::after{inset:-28%;background:radial-gradient(ellipse at 70% 18%,#d36bff2b 0%,transparent 34%),radial-gradient(ellipse at 18% 82%,#7045d52b 0%,transparent 40%);animation:hiera-drift-two 29s ease-in-out infinite alternate}
+.workspace>*{position:relative;z-index:1}
+@keyframes hiera-drift-one{0%{transform:translate3d(-2%,0,0) scale(1)}100%{transform:translate3d(3%,2%,0) scale(1.12)}}
+@keyframes hiera-drift-two{0%{transform:translate3d(2%,1%,0) scale(1.08)}100%{transform:translate3d(-3%,-2%,0) scale(.96)}}
+.message.assistant{max-width:100%;gap:10px;align-self:stretch}
+.message.assistant .message-mark{padding-top:3px;flex:none}
+.message.assistant .message-body{min-width:0;max-width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:7px}
+.message.assistant p{padding:0;border:0;border-radius:0;background:transparent;color:#f1eaff;white-space:pre-wrap;overflow-wrap:anywhere}
+.copy-message{border:1px solid #8c70b533;border-radius:8px;background:#ffffff08;color:#bda8df;padding:5px 9px;font-size:10px;cursor:pointer;opacity:.78}
+.copy-message:hover{opacity:1;background:#ffffff12;border-color:#b78af0;color:#f4eaff}
+:root[data-theme="light"] .message.assistant p{color:#39244f}
+:root[data-theme="light"] .copy-message{color:#654b7c;border-color:#bda7d7;background:#fff}
+@media(prefers-reduced-motion:reduce){.workspace::before,.workspace::after{animation:none}}
