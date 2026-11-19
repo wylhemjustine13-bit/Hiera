@@ -175,6 +175,69 @@ const server = createServer(async (req, res) => {
   }
 
 
+  if (req.method === 'POST' && url.pathname === '/api/billing/redeem-recovery-code') {
+    const user = readSession(req);
+    if (!user) return send(res, 401, { error: 'Connecte-toi avec Google avant de saisir le code.' });
+    if (!process.env.HIERA_RECOVERY_CODE) return send(res, 503, { error: 'Le code provisoire n’est pas encore configuré sur le serveur.' });
+    try {
+      const body = await readJson(req);
+      const code = typeof body.code === 'string' ? body.code.replace(/\\D/g, '') : '';
+      const plan = typeof body.plan === 'string' ? body.plan.toLowerCase() : '';
+      if (!['plus', 'pro', 'ultimate'].includes(plan)) return send(res, 400, { error: 'Choisis Plus, Pro ou Ultimate.' });
+      const expected = Buffer.from(process.env.HIERA_RECOVERY_CODE);
+      const supplied = Buffer.from(code);
+      if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) {
+        return send(res, 400, { error: 'Code incorrect.' });
+      }
+      await ensureUsageTable();
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(`CREATE TABLE IF NOT EXISTS hiera_recovery_campaign (
+          campaign_id INTEGER PRIMARY KEY CHECK (campaign_id = 1),
+          activation_count INTEGER NOT NULL DEFAULT 0,
+          max_activations INTEGER NOT NULL DEFAULT 10
+        )`);
+        await client.query(`CREATE TABLE IF NOT EXISTS hiera_recovery_redemptions (
+          user_id TEXT PRIMARY KEY,
+          plan TEXT NOT NULL,
+          redeemed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )`);
+        await client.query('INSERT INTO hiera_recovery_campaign (campaign_id, activation_count, max_activations) VALUES (1, 0, 10) ON CONFLICT (campaign_id) DO NOTHING');
+        const campaign = await client.query('SELECT activation_count, max_activations FROM hiera_recovery_campaign WHERE campaign_id = 1 FOR UPDATE');
+        const prior = await client.query('SELECT plan FROM hiera_recovery_redemptions WHERE user_id = $1', [user.sub]);
+        if (prior.rowCount) {
+          await client.query('ROLLBACK');
+          return send(res, 409, { error: 'Ce compte a déjà utilisé le code provisoire.' });
+        }
+        const count = Number(campaign.rows[0].activation_count);
+        const maximum = Number(campaign.rows[0].max_activations);
+        if (count >= maximum) {
+          await client.query('ROLLBACK');
+          return send(res, 410, { error: 'Les 10 activations du code provisoire ont déjà été utilisées.' });
+        }
+        await client.query('INSERT INTO hiera_recovery_redemptions (user_id, plan) VALUES ($1, $2)', [user.sub, plan]);
+        await client.query('UPDATE hiera_recovery_campaign SET activation_count = activation_count + 1 WHERE campaign_id = 1');
+        await client.query(
+          `INSERT INTO hiera_usage (user_id, plan, period_started_at, message_count, token_count, voice_seconds)
+           VALUES ($1, $2, NOW(), 0, 0, 0)
+           ON CONFLICT (user_id) DO UPDATE SET plan = EXCLUDED.plan, period_started_at = NOW(), message_count = 0, token_count = 0, voice_seconds = 0, voice_last_ping_at = NULL`,
+          [user.sub, plan],
+        );
+        await client.query('COMMIT');
+        return send(res, 200, { ok: true, plan, activationsUsed: count + 1, activationsRemaining: maximum - count - 1, message: 'Forfait ' + plan.toUpperCase() + ' activé. Il te reste ' + (maximum - count - 1) + ' activation(s) provisoire(s).' });
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    } catch (activationError) {
+      console.error('Recovery code activation failed:', activationError instanceof Error ? activationError.message : 'unknown error');
+      return send(res, 500, { error: 'Impossible de traiter cette activation. Réessaie plus tard.' });
+    }
+  }
+
   if (req.method === 'POST' && url.pathname === '/api/billing/stripe-webhook') {
     if (!STRIPE_WEBHOOK_SECRET) return send(res, 503, { error: 'Le paiement sécurisé n’est pas encore configuré.' });
     try {
