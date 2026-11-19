@@ -37,6 +37,7 @@ export default function App() {
   const [draft, setDraft] = useState('');
   const [model, setModel] = useState(() => localStorage.getItem('hiera-model') || 'groq:openai/gpt-oss-20b');
   const [busy, setBusy] = useState(false);
+  const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [googleClientId, setGoogleClientId] = useState('');
   const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
@@ -147,6 +148,16 @@ export default function App() {
     await fetch('/api/auth/logout', { method: 'POST' });
     window.google?.accounts.id.disableAutoSelect();
     setGoogleUser(null);
+  }
+
+  async function copyMessage(content: string, index: number) {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedMessageIndex(index);
+      window.setTimeout(() => setCopiedMessageIndex((current) => current === index ? null : current), 1600);
+    } catch {
+      setError("La copie automatique n'est pas disponible sur ce navigateur. Tu peux sélectionner le texte et le copier.");
+    }
   }
 
   async function sendMessage(event: React.FormEvent<HTMLFormElement>) {
@@ -332,7 +343,10 @@ export default function App() {
                 {messages.map((message, index) => (
                   <article className={`message ${message.role}`} key={index}>
                     {message.role === 'assistant' && <span className="message-mark">✳</span>}
-                    <p>{message.content}</p>
+                    <div className="message-body">
+                      <p>{message.content}</p>
+                      {message.role === 'assistant' && <button className="copy-message" type="button" onClick={() => copyMessage(message.content, index)} aria-label="Copier la réponse" title="Copier la réponse">{copiedMessageIndex === index ? '✓ Copié' : '⧉ Copier'}</button>}
+                    </div>
                   </article>
                 ))}
                 {busy && <article className="message assistant"><span className="message-mark">✳</span><p className="typing">Hiera réfléchit…</p></article>}
