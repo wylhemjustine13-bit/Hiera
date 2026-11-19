@@ -842,3 +842,16 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
   .composer-actions .stop-generation{width:auto;height:34px;padding:0 9px}
   .attachment-hint{font-size:9px}
 }
+
+
+/* Action de suppression de tout l'historique */
+.history-clear{
+  display:block;width:100%;margin-top:9px;padding:10px 11px;
+  border:1px solid #b64d6b66;border-radius:10px;
+  background:#8e29401c;color:#f0a3b3;text-align:left;
+  font-size:11px;cursor:pointer;transition:background .18s ease,border-color .18s ease;
+}
+.history-clear:hover:not(:disabled){background:#a52f4d33;border-color:#d66a86}
+.history-clear:disabled{opacity:.4;cursor:not-allowed}
+:root[data-theme="light"] .history-clear{color:#a33150;background:#fff3f5;border-color:#edc4cf}
+:root[data-theme="light"] .history-clear:hover:not(:disabled){background:#ffe8ed}
