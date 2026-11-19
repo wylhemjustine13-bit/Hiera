@@ -410,7 +410,7 @@ const server = createServer(async (req, res) => {
     const text = String(message || '').slice(0, 12000).toLocaleLowerCase('fr');
     const checks = [
       { category: 'menace_directe', patterns: [/\bje vais (?:te|le|la|les) tuer\b/i, /\bje vais (?:te|le|la) frapper\b/i, /\bje vais lui faire du mal\b/i] },
-      { category: 'harcelement_cible', patterns: [/\bje vais (?:la|le|les) harceler\b/i, /\bje vais publier (?:son|sa|ses) (?:photos?|adresse|numero)\b/i, /\bje vais le/la faire chanter\b/i] },
+      { category: 'harcelement_cible', patterns: [/\bje vais (?:la|le|les) harceler\b/i, /\bje vais publier (?:son|sa|ses) (?:photos?|adresse|numero)\b/i, /\bje vais (?:le|la) faire chanter\b/i] },
       { category: 'donnees_sensibles', patterns: [/\b(?:donne|envoie|obtiens) moi (?:ton|son) mot de passe\b/i, /\b(?:numero|code) de carte bancaire\b/i] },
     ];
     const match = checks.find((check) => check.patterns.some((pattern) => pattern.test(text)));
