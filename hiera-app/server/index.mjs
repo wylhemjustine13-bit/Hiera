@@ -22,6 +22,7 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const ACCESS_PASSWORD = process.env.HIERA_ACCESS_PASSWORD;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const HIERA_SESSION_SECRET = process.env.HIERA_SESSION_SECRET;
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const GOOGLE_OAUTH_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
 const GOOGLE_REDIRECT_URI = 'https://hiera.onrender.com/api/integrations/google/callback';
 const INTEGRATION_ENCRYPTION_KEY = process.env.INTEGRATION_ENCRYPTION_KEY;
@@ -171,6 +172,76 @@ const server = createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/auth/logout') {
     res.setHeader('Set-Cookie', 'hiera_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0');
     return send(res, 200, { ok: true });
+  }
+
+
+  if (req.method === 'POST' && url.pathname === '/api/billing/stripe-webhook') {
+    if (!STRIPE_WEBHOOK_SECRET) return send(res, 503, { error: 'Le paiement sécurisé n’est pas encore configuré.' });
+    try {
+      const chunks = [];
+      let size = 0;
+      for await (const chunk of req) {
+        size += chunk.length;
+        if (size > 1024 * 1024) return send(res, 413, { error: 'Événement de paiement trop volumineux.' });
+        chunks.push(chunk);
+      }
+      const rawBody = Buffer.concat(chunks);
+      const signatureHeader = String(req.headers['stripe-signature'] || '');
+      const parts = signatureHeader.split(',').map((part) => part.split('='));
+      const timestamp = parts.find(([key]) => key === 't')?.[1];
+      const signatures = parts.filter(([key]) => key === 'v1').map(([, value]) => value);
+      if (!timestamp || !signatures.length || Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) {
+        return send(res, 400, { error: 'Signature de paiement invalide ou expirée.' });
+      }
+      const expected = createHmac('sha256', STRIPE_WEBHOOK_SECRET).update(timestamp + '.' + rawBody.toString('utf8')).digest();
+      const valid = signatures.some((signature) => {
+        try {
+          const supplied = Buffer.from(signature, 'hex');
+          return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+        } catch { return false; }
+      });
+      if (!valid) return send(res, 400, { error: 'Signature de paiement invalide.' });
+      const event = JSON.parse(rawBody.toString('utf8'));
+      if (!event.id || !event.type || !event.data?.object) return send(res, 400, { error: 'Événement de paiement incomplet.' });
+      await ensureUsageTable();
+      await pool.query(`CREATE TABLE IF NOT EXISTS hiera_billing_events (
+        event_id TEXT PRIMARY KEY,
+        received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )`);
+      const alreadyHandled = await pool.query('SELECT event_id FROM hiera_billing_events WHERE event_id = $1', [event.id]);
+      if (alreadyHandled.rowCount) return send(res, 200, { received: true, duplicate: true });
+      const object = event.data.object;
+      let userId = object.metadata?.hiera_user_id || object.client_reference_id || null;
+      let plan = object.metadata?.hiera_plan || null;
+      let nextPlan = null;
+      if (event.type === 'checkout.session.completed') {
+        if (object.mode === 'subscription' && object.payment_status === 'paid' && userId && ['plus', 'pro', 'ultimate'].includes(plan)) nextPlan = plan;
+      } else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
+        if (userId && ['plus', 'pro', 'ultimate'].includes(plan)) {
+          nextPlan = event.type === 'customer.subscription.deleted' || !['active', 'trialing'].includes(object.status) ? 'basic' : plan;
+        }
+      }
+      await pool.query('BEGIN');
+      try {
+        await pool.query('INSERT INTO hiera_billing_events (event_id) VALUES ($1)', [event.id]);
+        if (userId && nextPlan) {
+          await pool.query(
+            `INSERT INTO hiera_usage (user_id, plan, period_started_at, message_count, token_count, voice_seconds)
+             VALUES ($1, $2, NOW(), 0, 0, 0)
+             ON CONFLICT (user_id) DO UPDATE SET plan = EXCLUDED.plan`,
+            [userId, nextPlan],
+          );
+        }
+        await pool.query('COMMIT');
+      } catch (dbError) {
+        await pool.query('ROLLBACK');
+        throw dbError;
+      }
+      return send(res, 200, { received: true });
+    } catch (billingError) {
+      console.error('Stripe webhook failed:', billingError instanceof Error ? billingError.message : 'unknown error');
+      return send(res, 500, { error: 'Impossible de traiter cet événement de paiement.' });
+    }
   }
 
   async function ensureUsageTable() {
