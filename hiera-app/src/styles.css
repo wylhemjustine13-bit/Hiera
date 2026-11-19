@@ -902,3 +902,16 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 /* Le menu est fixe dans la fenêtre pour ne plus être coupé par la zone de discussion */
 .attachment-menu{position:fixed;bottom:auto;z-index:1000;transform:none;max-height:min(60vh,320px);overflow-y:auto}
 .attachment-menu:after{display:none}
+
+
+.plan-badge{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;padding:7px 12px;border:1px solid #a77bdb66;border-radius:999px;background:#a77bdb1c;color:#d9baff;font-size:11px;font-weight:750;letter-spacing:.035em;white-space:nowrap}
+.plan-badge.plan-basic{border-color:#ffffff2b;background:#ffffff0b;color:#c9c1d3}
+.plan-badge.plan-plus{border-color:#6cb9e866;background:#6cb9e81a;color:#9bdcff}
+.plan-badge.plan-pro{border-color:#b58be866;background:#b58be81c;color:#d9baff}
+.plan-badge.plan-ultimate{border-color:#e4bd6b88;background:#e4bd6b1c;color:#f2d28e}
+:root[data-theme="light"] .plan-badge{color:#65418b}
+:root[data-theme="light"] .plan-badge.plan-basic{color:#625a6b}
+:root[data-theme="light"] .plan-badge.plan-plus{color:#23688a}
+:root[data-theme="light"] .plan-badge.plan-pro{color:#65418b}
+:root[data-theme="light"] .plan-badge.plan-ultimate{color:#89641b}
+@media(max-width:650px){.plan-badge{margin-left:auto;padding:6px 9px;font-size:10px}.fullscreen-toggle{margin-left:0}}
