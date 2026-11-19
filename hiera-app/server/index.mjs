@@ -159,7 +159,7 @@ const server = createServer(async (req, res) => {
       const password = typeof body.password === 'string' ? body.password : '';
       const name = typeof body.name === 'string' ? body.name.trim().slice(0, 80) : '';
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return send(res, 400, { error: 'Adresse e-mail invalide.' });
-      if (password.length < 10 || password.length > 128) return send(res, 400, { error: 'Le mot de passe doit contenir entre 10 et 128 caractères.' });
+      if (password.length < 8 || password.length > 128) return send(res, 400, { error: 'Le mot de passe doit contenir entre 8 et 128 caractères.' });
       if (!pool) return send(res, 503, { error: 'La base de données des comptes doit être configurée sur Render.' });
       await pool.query("CREATE TABLE IF NOT EXISTS hiera_accounts (id BIGSERIAL PRIMARY KEY, email TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL DEFAULT '', password_hash TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
       let account;
