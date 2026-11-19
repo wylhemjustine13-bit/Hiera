@@ -78,9 +78,11 @@ export default function App() {
   const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
   const [tokenUsage, setTokenUsage] = useState<{ plan: string; tokensUsed: number; tokensUsedTotal: number; tokenBudget: number; tokensRemaining: number } | null>(null);
   const [billingSelection, setBillingSelection] = useState<{ name: string; price: string } | null>(null);
-  const [recoveryCode, setRecoveryCode] = useState('');
-  const [recoveryStatus, setRecoveryStatus] = useState('');
-  const [recoveryBusy, setRecoveryBusy] = useState(false);
+  const [authNotice, setAuthNotice] = useState('');
+  const [adminActionStatus, setAdminActionStatus] = useState('');
+  const [adminNotificationsEnabled, setAdminNotificationsEnabled] = useState(false);
+  const adminSeenRequestsRef = useRef<Set<number>>(new Set());
+  const adminNotificationsRef = useRef(false);
   const [liveVoice, setLiveVoice] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState('Mode vocal désactivé');
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -179,14 +181,43 @@ export default function App() {
   async function openAdminPanel() {
     setAdminLoading(true);
     try {
-      const response = await fetch('/api/admin/overview', { cache: 'no-store' });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Accès administrateur refusé.');
-      setAdminData(data); setIsAdmin(true); setAdminPanel(true);
-    } catch (adminError) {
-      setError(adminError instanceof Error ? adminError.message : 'Impossible de charger Hiera Control.');
-    } finally { setAdminLoading(false); }
+      const data = await refreshAdminData(true);
+      if (!data) throw new Error('Accès administrateur refusé ou données indisponibles.');
+      setAdminPanel(true);
+    } catch (adminError) { setError(adminError instanceof Error ? adminError.message : 'Impossible de charger Hiera Control.'); }
+    finally { setAdminLoading(false); }
   }
+
+  useEffect(() => {
+    if (!adminPanel || !isAdmin) return;
+    let active = true;
+    let firstPoll = true;
+    const poll = async () => {
+      try {
+        const response = await fetch('/api/admin/overview', { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!active) return;
+        const requests = Array.isArray(data.resetRequests) ? data.resetRequests : [];
+        if (firstPoll) {
+          requests.forEach((item: any) => adminSeenRequestsRef.current.add(Number(item.id)));
+          firstPoll = false;
+        } else {
+          for (const item of requests) {
+            const id = Number(item.id);
+            if (!adminSeenRequestsRef.current.has(id)) {
+              adminSeenRequestsRef.current.add(id);
+              if (adminNotificationsRef.current && typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Demande Hiera', { body: 'Mot de passe oublié : ' + item.email });
+            }
+          }
+        }
+        setAdminData(data);
+      } catch { /* La prochaine actualisation réessaiera. */ }
+    };
+    void poll();
+    const timer = window.setInterval(poll, 1000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [adminPanel, isAdmin]);
 
   useEffect(() => {
     if (!googleUser) { setTokenUsage(null); return; }
@@ -270,32 +301,59 @@ export default function App() {
     return () => { active = false; };
   }, [googleClientId, settingsOpen, settingsPage]);
 
-  async function redeemRecoveryCode() {
-    if (!billingSelection || !['Hiera Plus', 'Hiera Pro', 'Hiera Ultimate'].includes(billingSelection.name)) {
-      setRecoveryStatus('Choisis d’abord Plus, Pro ou Ultimate.');
-      return;
-    }
-    setRecoveryBusy(true);
-    setRecoveryStatus('');
+  async function requestPasswordReset() {
+    setAuthError(''); setAuthNotice('');
+    const email = authEmail.trim();
+    if (!email) { setAuthError('Indique ton adresse e-mail pour demander la réinitialisation.'); return; }
+    setAuthBusy(true);
     try {
-      const plan = billingSelection.name.replace('Hiera ', '').toLowerCase();
-      const response = await fetch('/api/billing/redeem-recovery-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: recoveryCode, plan }),
-      });
+      const response = await fetch('/api/auth/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Activation impossible.');
-      setRecoveryStatus(data.message || 'Forfait activé.');
-      setRecoveryCode('');
-      setBillingSelection(null);
-      const usage = await fetch('/api/usage').then((r) => r.ok ? r.json() : null).catch(() => null);
-      if (usage) setTokenUsage(usage);
+      if (!response.ok) throw new Error(data.error || 'Demande impossible.');
+      setAuthNotice(data.message || 'Demande transmise à Hiera.');
+    } catch (err) { setAuthError(err instanceof Error ? err.message : 'Demande impossible.'); }
+    finally { setAuthBusy(false); }
+  }
+
+  async function refreshAdminData(showErrors = false) {
+    try {
+      const response = await fetch('/api/admin/overview', { cache: 'no-store' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Impossible d’actualiser Hiera Control.');
+      setAdminData(data); setIsAdmin(true); return data;
     } catch (err) {
-      setRecoveryStatus(err instanceof Error ? err.message : 'Activation impossible.');
-    } finally {
-      setRecoveryBusy(false);
+      if (showErrors) setAdminActionStatus(err instanceof Error ? err.message : 'Actualisation impossible.');
+      return null;
     }
+  }
+
+  async function updateAdminAccount(userId: string, changes: { plan?: string; banned?: boolean }) {
+    setAdminActionStatus('');
+    try {
+      const response = await fetch('/api/admin/account', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, ...changes }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Modification impossible.');
+      setAdminActionStatus('Compte mis à jour.'); await refreshAdminData();
+    } catch (err) { setAdminActionStatus(err instanceof Error ? err.message : 'Modification impossible.'); }
+  }
+
+  async function resolveResetRequest(id: number) {
+    try {
+      const response = await fetch('/api/admin/reset-request/resolve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Impossible de traiter la demande.');
+      await refreshAdminData();
+    } catch (err) { setAdminActionStatus(err instanceof Error ? err.message : 'Impossible de traiter la demande.'); }
+  }
+
+  async function enableAdminNotifications() {
+    if (typeof Notification === 'undefined') { setAdminActionStatus('Notifications non prises en charge par ce navigateur.'); return; }
+    const permission = Notification.permission === 'default' ? await Notification.requestPermission() : Notification.permission;
+    if (permission === 'granted') {
+      adminNotificationsRef.current = true; setAdminNotificationsEnabled(true);
+      setAdminActionStatus('Notifications activées sur cet appareil tant que Hiera Control reste ouvert.');
+      new Notification('Hiera Control', { body: 'Les nouvelles demandes seront signalées.' });
+    } else setAdminActionStatus('Autorisation de notification refusée dans le navigateur.');
   }
 
   async function submitEmailAuth(event: React.FormEvent<HTMLFormElement>) {
@@ -658,6 +716,8 @@ export default function App() {
             {authError && <p className="auth-form-error" role="alert">{authError}</p>}
             <button className="auth-submit" type="submit" disabled={authBusy}>{authBusy ? 'Patiente…' : authMode === 'register' ? 'Créer mon compte' : 'Se connecter'}</button>
           </form>
+          {authMode === 'login' && <button className="auth-forgot-button" type="button" onClick={requestPasswordReset} disabled={authBusy}>J’ai oublié mon mot de passe</button>}
+          {authNotice && <p className="auth-form-hint" role="status">{authNotice}</p>}
           <div className="auth-divider"><span>ou</span></div>
           <div className="google-login auth-google-login" ref={googleButtonRef} />
           {!googleClientId && <p className="auth-form-hint">La connexion Google doit être configurée dans les variables Render.</p>}
@@ -692,15 +752,23 @@ export default function App() {
 
         {adminPanel && adminData && <div className="admin-overlay" role="dialog" aria-modal="true" aria-label="Hiera Control">
           <section className="admin-panel">
-            <header className="admin-panel-header"><div><span className="admin-kicker">ESPACE ADMINISTRATEUR</span><h2>Hiera Control</h2><small>Connecté : {adminData.email}</small></div><button type="button" onClick={() => setAdminPanel(false)} aria-label="Fermer Hiera Control">×</button></header>
-            <div className="admin-stats"><article><span>Comptes e-mail</span><strong>{adminData.stats.emailAccounts}</strong></article><article><span>Profils actifs (30 j)</span><strong>{adminData.stats.activeUsageProfiles30d}</strong></article></div>
-            <section className="admin-section"><h3>Répartition des forfaits</h3>
-              {adminData.stats.planBreakdown.length ? <div className="admin-plan-list">{adminData.stats.planBreakdown.map((item: any) => <div key={item.plan}><span>{({basic:'Basic',plus:'Plus',pro:'Pro',ultimate:'Ultime'} as Record<string,string>)[item.plan] || item.plan}</span><b>{item.users} compte(s)</b><small>{Number(item.tokens).toLocaleString('fr-FR')} jetons cumulés</small></div>)}</div> : <p>Aucune donnée de forfait disponible.</p>}
+            <header className="admin-panel-header"><div><span className="admin-kicker">ESPACE ADMINISTRATEUR</span><h2>Hiera Control</h2><small>Connecté : {adminData.email} · Actualisation automatique</small></div><button type="button" onClick={() => setAdminPanel(false)} aria-label="Fermer Hiera Control">×</button></header>
+            <div className="admin-stats"><article><span>Comptes</span><strong>{adminData.stats.emailAccounts}</strong></article><article><span>Actifs (30 j)</span><strong>{adminData.stats.activeUsageProfiles30d}</strong></article><article><span>Demandes oubli</span><strong>{(adminData.resetRequests || []).length}</strong></article></div>
+            <div className="admin-tools-row"><span>Actualisation silencieuse : 1 seconde</span><button type="button" onClick={enableAdminNotifications}>{adminNotificationsEnabled ? '✓ Notifications activées' : 'Activer les notifications'}</button></div>
+            {adminActionStatus && <p className="admin-action-status" role="status">{adminActionStatus}</p>}
+            <section className="admin-section"><h3>Comptes Hiera</h3><div className="admin-user-list">
+              {(adminData.users || []).map((item: any) => <article className="admin-user-row" key={item.userId}>
+                <div className="admin-user-identity"><strong>{item.name || 'Sans nom'}</strong><small>{item.email}</small><time>Activité : {item.lastSeenAt ? new Date(item.lastSeenAt).toLocaleString('fr-FR') : 'Non disponible'}</time></div>
+                <div className="admin-user-controls"><select aria-label={'Forfait de ' + item.email} value={item.plan || 'basic'} onChange={(event) => updateAdminAccount(item.userId, { plan: event.target.value })}><option value="basic">Basic</option><option value="plus">Plus</option><option value="pro">Pro</option><option value="ultimate">Ultime</option></select>
+                  <button type="button" className={item.banned ? 'admin-reactivate' : 'admin-ban'} onClick={() => updateAdminAccount(item.userId, { banned: !item.banned })}>{item.banned ? 'Réactiver' : 'Suspendre'}</button><span className={item.banned ? 'admin-status-banned' : 'admin-status-active'}>{item.banned ? 'Suspendu' : 'Actif'}</span></div>
+              </article>)}
+              {!(adminData.users || []).length && <p>Aucun compte enregistré pour le moment.</p>}
+            </div></section>
+            <section className="admin-section"><h3>Demandes « mot de passe oublié »</h3>
+              {(adminData.resetRequests || []).length ? <div className="admin-reset-list">{adminData.resetRequests.map((item: any) => <article key={item.id}><div><strong>{item.email}</strong><time>{new Date(item.requested_at).toLocaleString('fr-FR')}</time></div><button type="button" onClick={() => resolveResetRequest(Number(item.id))}>Marquer comme traitée</button></article>)}</div> : <p>Aucune demande en attente.</p>}
             </section>
-            <section className="admin-section"><h3>Derniers comptes e-mail</h3>
-              {adminData.stats.recentAccounts.length ? <div className="admin-account-list">{adminData.stats.recentAccounts.map((item: any) => <div key={item.email}><span>{item.name || 'Sans nom'}</span><small>{item.email}</small><time>{new Date(item.createdAt).toLocaleDateString('fr-FR')}</time></div>)}</div> : <p>Aucun compte e-mail enregistré pour le moment.</p>}
-            </section>
-            <footer className="admin-panel-footer"><span>Statistiques issues de la base de données Hiera.</span><button type="button" onClick={openAdminPanel} disabled={adminLoading}>{adminLoading ? 'Actualisation…' : '↻ Actualiser'}</button></footer>
+            <section className="admin-section"><h3>Répartition des forfaits</h3>{adminData.stats.planBreakdown.length ? <div className="admin-plan-list">{adminData.stats.planBreakdown.map((item: any) => <div key={item.plan}><span>{({basic:'Basic',plus:'Plus',pro:'Pro',ultimate:'Ultime'} as Record<string,string>)[item.plan] || item.plan}</span><b>{item.users} compte(s)</b><small>{Number(item.tokens).toLocaleString('fr-FR')} jetons cumulés</small></div>)}</div> : <p>Aucune donnée de forfait disponible.</p>}</section>
+            <footer className="admin-panel-footer"><span>Les conversations et mots de passe ne sont pas accessibles ici.</span><button type="button" onClick={() => void refreshAdminData(true)} disabled={adminLoading}>↻ Actualiser</button></footer>
           </section>
         </div>}
 
