@@ -81,11 +81,6 @@ export default function App() {
   const [authPassword, setAuthPassword] = useState('');
   const [authBusy, setAuthBusy] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [imageGeneratorOpen, setImageGeneratorOpen] = useState(false);
-  const [imagePrompt, setImagePrompt] = useState('');
-  const [generatedImageUrl, setGeneratedImageUrl] = useState('');
-  const [imageGenerating, setImageGenerating] = useState(false);
-  const [imageError, setImageError] = useState('');
   const [settingsPage, setSettingsPage] = useState('home');
   const [wellbeingSection, setWellbeingSection] = useState<'security' | 'privacy'>('security');
   const [sidebarOpen, setSidebarOpen] = useState(() => !window.matchMedia("(max-width: 760px)").matches);
@@ -545,7 +540,7 @@ export default function App() {
         <button className="brand" onClick={() => setSidebarOpen((open) => !open)} aria-label="Rétracter ou afficher la barre latérale"><AtomLogo /><div><span>Hiera</span><small>Votre IA, toujours avec vous</small></div></button>
         <button className="new-chat" onClick={newConversation} disabled={busy}>＋ Nouvelle conversation</button>
         <div className="side-label">ESPACE</div>
-        <nav className="sidebar-primary-nav" aria-label="Navigation principale"><button className={`side-link ${!settingsOpen && !imageGeneratorOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(false); setImageGeneratorOpen(false); }}><span>◉</span><b>Conversation</b></button><button className={`side-link ${imageGeneratorOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(false); setImageGeneratorOpen(true); if (window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false); }}><span>✧</span><b>Générateur d’images</b></button><button className={`side-link ${settingsOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(true); setImageGeneratorOpen(false); setSettingsPage("home"); if (window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false); }}><span>⚙</span><b>Paramètres</b></button></nav>
+        <nav className="sidebar-primary-nav" aria-label="Navigation principale"><button className={`side-link ${!settingsOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(false); }}><span>◉</span><b>Conversation</b></button><button className={`side-link ${settingsOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(true); setSettingsPage("home"); if (window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false); }}><span>⚙</span><b>Paramètres</b></button></nav>
         <div className="history-heading">CONVERSATIONS</div><div className="conversation-history">{conversations.filter((item) => !!item.archived === showArchived).slice(0,12).map((item) => <div className="history-row" key={item.id}><button className="history-open" onClick={() => openConversation(item)} title={item.title}>{item.title}</button><button className="history-action" onClick={() => archiveConversation(item.id)} aria-label={item.archived ? "Désarchiver" : "Archiver"}>{item.archived ? "↩" : "▣"}</button></div>)}</div><button className="history-toggle" onClick={() => setShowArchived((v) => !v)}>{showArchived ? "Voir les conversations" : "Voir les archivées"}</button><button className="history-clear" onClick={clearAllHistory} disabled={busy || conversations.length === 0}>⌫ Supprimer tout l’historique</button>
         <div className="sidebar-account"><div className="account-status"><span className="status-dot" /> {googleUser ? "Google connecté" : "Compte non connecté"}</div><div className="account-provider"><span className="google-g">G</span><span>{googleUser ? googleUser.email : "Gérer dans Paramètres"}</span></div></div>
       </aside>
@@ -554,7 +549,7 @@ export default function App() {
       <section className="workspace" onClick={(event) => { if (sidebarOpen && event.target === event.currentTarget) setSidebarOpen(false); }}>
         <header className="topbar">
           <button className="mobile-menu-button" onClick={() => setSidebarOpen((open) => !open)} aria-label="Afficher ou masquer le menu"><AtomLogo /></button>
-          <span className="topbar-title">{settingsOpen ? "Paramètres" : imageGeneratorOpen ? "Générateur d’images" : "Conversation"}</span>
+          <span className="topbar-title">{settingsOpen ? "Paramètres" : "Conversation"}</span>
         </header>
 
         {settingsOpen ? (
@@ -693,19 +688,7 @@ export default function App() {
               <div className="settings-feature-card"><strong>Apparence</strong><p>Le thème nuit violet est actuellement utilisé.</p><span className="settings-static-value">Thème nuit</span></div>
               <div className="settings-feature-card"><strong>Modèle d'intelligence artificielle</strong><p>Choisis le modèle utilisé pour tes prochaines conversations.</p><select className="settings-select" value={model} onChange={(event) => setModel(event.target.value)}><option value="groq:openai/gpt-oss-20b">GPT-OSS 20B (Groq)</option><option value="groq:openai/gpt-oss-120b">GPT-OSS 120B (Groq)</option></select></div>
             </div>}
-          </section>        ) : imageGeneratorOpen ? (
-          <section className="image-generator-page">
-            <div className="image-generator-heading"><span className="image-generator-symbol">✧</span><p className="eyebrow">CRÉATION VISUELLE</p><h1>Générateur d’images</h1><p>Décris l’image que tu imagines. Hiera la crée à partir de ta description.</p></div>
-            <form className="image-generator-form" onSubmit={(event) => { event.preventDefault(); const prompt = imagePrompt.trim(); if (!prompt || imageGenerating) return; setImageGenerating(true); setImageError(''); setGeneratedImageUrl('https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt) + '?width=768&height=768&seed=' + Date.now()); }}>
-              <label htmlFor="hiera-image-prompt">Description de l’image</label>
-              <textarea id="hiera-image-prompt" value={imagePrompt} onChange={(event) => setImagePrompt(event.target.value)} placeholder="Ex. : Un petit renard blanc dans une forêt enchantée, style illustration 3D…" rows={4} maxLength={1000} />
-              <div className="image-generator-form-footer"><small>{imagePrompt.length}/1000 caractères · Gratuit, sans clé API. Limites de génération possibles.</small><button type="submit" disabled={!imagePrompt.trim() || imageGenerating}>✧ Générer l’image</button></div>
-            </form>
-            {imageError && <p className="image-generator-error" role="alert">{imageError}</p>}
-            {generatedImageUrl && <div className="generated-image-card"><div className="generated-image-title"><strong>Ton image</strong><button type="button" onClick={() => { setGeneratedImageUrl(''); setImageGenerating(false); }}>Effacer</button></div><img src={generatedImageUrl} alt="Image générée à partir de ta description" onLoad={() => setImageGenerating(false)} onError={() => { setImageGenerating(false); setImageError('La génération a échoué ou la limite gratuite est momentanément atteinte. Réessaie un peu plus tard.'); }} /><a href={generatedImageUrl} target="_blank" rel="noreferrer">Ouvrir l’image dans un nouvel onglet ↗</a></div>}
-            <p className="image-generator-note">Le service gratuit est externe à Hiera. Évite d’y envoyer des informations personnelles ou des photos privées.</p>
-          </section>
-        ) : (
+          </section>        ) : (
           <>
             <div className="conversation">
               {authError && <p className="auth-error" role="alert">{authError}</p>}
