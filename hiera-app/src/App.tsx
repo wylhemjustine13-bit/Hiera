@@ -56,6 +56,7 @@ export default function App() {
   const [liveVoice, setLiveVoice] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState('Mode vocal désactivé');
   const recognitionRef = useRef<HieraSpeechRecognition | null>(null);
+  const voiceHeartbeatRef = useRef<number | null>(null);
   const liveVoiceRef = useRef(false);
   const [error, setError] = useState('');
   const [googleClientId, setGoogleClientId] = useState('');
@@ -202,16 +203,51 @@ export default function App() {
     setLiveVoice(false);
     recognitionRef.current?.stop();
     recognitionRef.current = null;
+    if (voiceHeartbeatRef.current !== null) { window.clearInterval(voiceHeartbeatRef.current); voiceHeartbeatRef.current = null; }
+    void fetch('/api/voice/stop', { method: 'POST' });
     window.speechSynthesis?.cancel();
     setVoiceStatus('Mode vocal désactivé');
   }
 
-  function startLiveVoice() {
+  async function startLiveVoice() {
     if (!('speechSynthesis' in window)) { setError("La lecture vocale n'est pas disponible sur ce navigateur."); return; }
-    liveVoiceRef.current = true;
-    setLiveVoice(true);
     setError('');
-    startVoiceListening();
+    try {
+      const response = await fetch('/api/voice/start', { method: 'POST' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Quota vocal indisponible.');
+      liveVoiceRef.current = true;
+      setLiveVoice(true);
+      setVoiceStatus('Mode vocal activé');
+      voiceHeartbeatRef.current = window.setInterval(async () => {
+        try {
+          const heartbeat = await fetch('/api/voice/heartbeat', { method: 'POST' });
+          const status = await heartbeat.json();
+          if (!heartbeat.ok || Number(status.secondsRemaining) <= 0) {
+            liveVoiceRef.current = false;
+            setLiveVoice(false);
+            recognitionRef.current?.stop();
+            recognitionRef.current = null;
+            if (voiceHeartbeatRef.current !== null) { window.clearInterval(voiceHeartbeatRef.current); voiceHeartbeatRef.current = null; }
+            window.speechSynthesis?.cancel();
+            setVoiceStatus('Quota vocal atteint');
+            setError(status.error || 'Tu as atteint la durée vocale de ton forfait pour cette période de 24 heures.');
+          }
+        } catch {
+          liveVoiceRef.current = false;
+          setLiveVoice(false);
+          recognitionRef.current?.stop();
+          recognitionRef.current = null;
+          if (voiceHeartbeatRef.current !== null) { window.clearInterval(voiceHeartbeatRef.current); voiceHeartbeatRef.current = null; }
+          setVoiceStatus('Vérification du quota vocal impossible');
+          setError('La vérification du quota vocal a échoué. Le mode vocal a été arrêté par sécurité.');
+        }
+      }, 15000);
+      startVoiceListening();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Impossible de démarrer le mode vocal.');
+      setVoiceStatus('Mode vocal indisponible');
+    }
   }
 
   async function addAttachments(fileList: FileList | null) {
