@@ -46,7 +46,6 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsPage, setSettingsPage] = useState('home');
   const [wellbeingSection, setWellbeingSection] = useState<'security' | 'privacy'>('security');
-  const [appSearch, setAppSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(() => !window.matchMedia("(max-width: 760px)").matches);
   const googleButtonRef = useRef<HTMLDivElement>(null);
   function updateSetting(key: string, value: any) { setSettingsValues((current) => ({ ...current, [key]: value })); }
@@ -195,38 +194,7 @@ export default function App() {
     setSettingsPage('home');
   }
 
-  const applications = [
-    {name:'Google',slug:'google',desc:'Compte Google et services'},
-    {name:'Google Agenda',slug:'googlecalendar',desc:'Événements et rendez-vous'},
-    {name:'Gmail',slug:'gmail',desc:'E-mails et boîte de réception'},
-    {name:'Google Drive',slug:'googledrive',desc:'Fichiers et documents'},
-    {name:'Google Docs',slug:'googledocs',desc:'Documents texte'},
-    {name:'Google Sheets',slug:'googlesheets',desc:'Tableurs et données'},
-    {name:'Google Meet',slug:'googlemeet',desc:'Réunions et visioconférences'},
-    {name:'Google Photos',slug:'googlephotos',desc:'Photothèque'},
-    {name:'YouTube',slug:'youtube',desc:'Chaîne et contenus'},
-    {name:'GitHub',slug:'github',desc:'Dépôts et projets de code'},
-    {name:'Jira',slug:'jira',desc:'Projets et suivi des tâches'},
-    {name:'GitLab',slug:'gitlab',desc:'Dépôts et CI/CD'},
-    {name:'Bitbucket',slug:'bitbucket',desc:'Dépôts de code'},
-    {name:'Discord',slug:'discord',desc:'Communautés et messages'},
-    {name:'Slack',slug:'slack',desc:'Espaces de travail'},
-    {name:'Notion',slug:'notion',desc:'Notes et espaces de travail'},
-    {name:'Dropbox',slug:'dropbox',desc:'Stockage de fichiers'},
-    {name:'Microsoft OneDrive',slug:'microsoftonedrive',desc:'Fichiers Microsoft'},
-    {name:'Outlook',slug:'microsoftoutlook',desc:'E-mails et calendrier'},
-    {name:'Trello',slug:'trello',desc:'Tableaux et tâches'},
-    {name:'Spotify',slug:'spotify',desc:'Musique et playlists'},
-    {name:'Figma',slug:'figma',desc:'Design et prototypes'},
-    {name:'Canva',slug:'canva',desc:'Créations graphiques'},
-    {name:'Zoom',slug:'zoom',desc:'Réunions en ligne'},
-    {name:'Instagram',slug:'instagram',desc:'Compte et publications'},
-    {name:'TikTok',slug:'tiktok',desc:'Compte et contenus'},
-    {name:'LinkedIn',slug:'linkedin',desc:'Profil et réseau professionnel'},
-    {name:'X',slug:'x',desc:'Compte et publications'},
-  ];
-  const filteredApplications = applications.filter((app) => (app.name + ' ' + app.desc).toLowerCase().includes(appSearch.toLowerCase()));
-  const settingsItems = [["account","Compte et connexion","Compte Google, session et profil","◉"],["parental","Contrôle parental","Préférences de réponse et ressources familiales","⌂"],["wellbeing","Sécurité et bien-être","Sécurité du compte et protection des données","♡"],["usage","Utilisation","Activité et statistiques locales","▤"],["billing","Facturation","État des achats et abonnements","€"],["general","Général","Langue et comportement de la touche Entrée","⚙"],["theme","Thème","Apparence claire ou sombre","◐"],["notifications","Notifications","Préférences de notification","♢"],["voice","Voix","Lecture vocale des réponses","♫"],["personalization","Personnalisation","Nom et style de Hiera","✧"],["companion","Compagnon","État des fonctions du compagnon","◉"],["history","Chats et archivés","Historique et conversations archivées","▣"],["storage","Stockage et données","Gestion des conversations locales","▤"],["plugins","Plugins","Extensions disponibles","▦"],["apps","Applications et services","Connexions externes","▦"],["preferences","Modèles IA","Choix du modèle de conversation","✧"]];
+  const settingsItems = [["account","Compte et connexion","Compte Google, session et profil","◉"],["parental","Contrôle parental","Préférences de réponse et ressources familiales","⌂"],["wellbeing","Sécurité et bien-être","Sécurité du compte et protection des données","♡"],["usage","Utilisation","Activité et statistiques locales","▤"],["billing","Facturation","État des achats et abonnements","€"],["general","Général","Langue et comportement de la touche Entrée","⚙"],["theme","Thème","Apparence claire ou sombre","◐"],["notifications","Notifications","Préférences de notification","♢"],["voice","Voix","Lecture vocale des réponses","♫"],["personalization","Personnalisation","Nom et style de Hiera","✧"],["companion","Compagnon","État des fonctions du compagnon","◉"],["history","Chats et archivés","Historique et conversations archivées","▣"],["storage","Stockage et données","Gestion des conversations locales","▤"],["plugins","Plugins","Extensions disponibles","▦"],["preferences","Modèles IA","Choix du modèle de conversation","✧"]];
   const settingsTitles: Record<string, string> = Object.fromEntries([['home','Paramètres'], ...settingsItems.map(([id,title]) => [id,title])]);
 
   return (
@@ -264,36 +232,6 @@ export default function App() {
                 {authError && <p className="settings-warning" role="alert">{authError}</p>}
               </div>
             </div>}
-            {settingsPage === 'apps' && <div className="settings-detail">
-              <p className="settings-description">Retrouve les services que tu souhaites utiliser avec Hiera. Recherche une application par son nom.</p>
-              <label className="app-search-box"><span>⌕</span><input value={appSearch} onChange={(event) => setAppSearch(event.target.value)} placeholder="Rechercher une application..." aria-label="Rechercher une application" /></label>
-              <div className="application-directory">
-                {calendarNotice && <p className="settings-description" role="status">{calendarNotice}</p>}
-                {filteredApplications.map((app) => <article className="application-card" key={app.slug}>
-                  <img className="application-brand-logo" src={`https://cdn.simpleicons.org/${app.slug}`} alt={`Logo ${app.name}`} loading="lazy" onError={(event) => { event.currentTarget.style.opacity='0'; }} />
-                  <div className="application-card-copy"><strong>{app.name}</strong><small>{app.desc}</small><em>{app.slug === 'googlecalendar' ? (calendarConnected ? 'Connecté à Google Agenda' : 'Connexion Google Agenda disponible') : 'Connexion non configurée'}</em></div>
-                  {app.slug === 'googlecalendar' ? <button className="application-connect-button" onClick={async () => {
-                    setCalendarNotice('');
-                    if (calendarConnected) {
-                      try {
-                        const response = await fetch('/api/integrations/google/disconnect', { method: 'POST' });
-                        const data = await response.json();
-                        if (!response.ok) throw new Error(data.error || 'Déconnexion impossible.');
-                        setCalendarConnected(false);
-                        setCalendarNotice('Google Agenda a été déconnecté.');
-                      } catch (err) { setCalendarNotice(err instanceof Error ? err.message : 'Déconnexion impossible.'); }
-                    } else if (!googleUser) {
-                      setSettingsPage('account');
-                      setCalendarNotice('Connecte d’abord ton compte Google à Hiera, puis reviens ici pour autoriser Google Agenda.');
-                    } else {
-                      window.location.href = '/api/integrations/google/start';
-                    }
-                  }}>{calendarConnected ? 'Déconnecter' : googleUser ? 'Connecter' : 'Connecter mon compte'}</button> : <button className="application-connect-button" disabled title="L'autorisation officielle de ce service n'est pas encore configurée">Connecter</button>}
-                </article>)}
-                {filteredApplications.length === 0 && <p className="settings-empty">Aucune application ne correspond à « {appSearch} ».</p>}
-              </div>
-            </div>}
-
             {settingsPage === 'parental' && <div className="settings-detail">
               <p className="settings-description">Ces préférences agissent sur les réponses de Hiera. Elles ne remplacent pas les contrôles parentaux du téléphone, de l'ordinateur ou du compte Google.</p>
               <div className="settings-feature-card">
