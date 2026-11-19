@@ -639,42 +639,6 @@ const server = createServer(async (req, res) => {
     }
   }
 
-  if (req.method === 'POST' && url.pathname === '/api/tts') {
-    const ttsUser = readSession(req);
-    if (!ttsUser) return send(res, 401, { error: 'Connecte-toi pour utiliser les voix Hiera.' });
-    const ttsApiKey = process.env.GOOGLE_TTS_API_KEY;
-    if (!ttsApiKey) return send(res, 503, { error: 'Le service de voix intégrées doit encore être configuré sur le serveur.' });
-    try {
-      const body = await readJson(req);
-      const text = typeof body.text === 'string' ? body.text.trim() : '';
-      const voice = typeof body.voice === 'string' ? body.voice : 'fr-FR-Neural2-F';
-      const allowedVoices = new Set([
-        'fr-FR-Neural2-F', 'fr-FR-Chirp3-HD-Achernar', 'fr-FR-Wavenet-F', 'fr-FR-Chirp3-HD-Callirrhoe',
-        'fr-FR-Neural2-G', 'fr-FR-Chirp3-HD-Achird', 'fr-FR-Wavenet-G', 'fr-FR-Chirp3-HD-Charon',
-      ]);
-      if (!text || text.length > 3000) return send(res, 400, { error: 'Le texte doit contenir entre 1 et 3 000 caractères.' });
-      if (!allowedVoices.has(voice)) return send(res, 400, { error: 'Voix non reconnue.' });
-      const ttsResponse = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key=' + encodeURIComponent(ttsApiKey), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          input: { text },
-          voice: { languageCode: 'fr-FR', name: voice },
-          audioConfig: { audioEncoding: 'MP3', speakingRate: 1.0 },
-        }),
-      });
-      const ttsData = await ttsResponse.json().catch(() => ({}));
-      if (!ttsResponse.ok || typeof ttsData.audioContent !== 'string') {
-        console.error('Google TTS request failed:', ttsData.error?.status || ttsResponse.status);
-        return send(res, 502, { error: 'La génération de la voix a échoué. Vérifie la configuration du service vocal.' });
-      }
-      return send(res, 200, { audioContent: ttsData.audioContent, voice });
-    } catch (ttsError) {
-      console.error('Hiera TTS failed:', ttsError instanceof Error ? ttsError.message : 'unknown error');
-      return send(res, 400, { error: 'Impossible de générer la voix pour le moment.' });
-    }
-  }
-
   if (url.pathname === '/api/chat') {
     if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
     if (IS_PRODUCTION && !ACCESS_PASSWORD && !readSession(req)) {
