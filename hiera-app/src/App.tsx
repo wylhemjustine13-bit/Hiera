@@ -591,9 +591,17 @@ export default function App() {
     }
   }
 
+  function isAdminTrigger(value: string) {
+    // Le clavier mobile peut retirer les underscores ou ajouter des espaces.
+    // La phrase ne donne jamais les droits : l'API vérifie toujours la session et l'e-mail autorisé.
+    const normalized = value.normalize('NFKC').toLocaleLowerCase('fr')
+      .replace(/[\\s\\p{P}\\p{S}]/gu, '');
+    return normalized === 'diamant09';
+  }
+
   async function sendMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (draft.trim().toLowerCase() === '_diamant09_') {
+    if (isAdminTrigger(draft)) {
       setDraft(''); setAttachments([]);
       await openAdminPanel();
       return;
