@@ -152,6 +152,7 @@ const server = createServer(async (req, res) => {
     if (!usageUser) return send(res, 401, { error: 'Connecte-toi pour consulter ton forfait.' });
     try {
       await ensureUsageTable();
+      if (await saveUserProfile(usageUser)) return send(res, 403, { error: 'Ce compte est suspendu. Contacte le support Hiera.' });
       await pool.query(
         'INSERT INTO hiera_usage (user_id, plan, period_started_at, message_count, token_count) VALUES ($1, \'basic\', NOW(), 0, 0) ON CONFLICT (user_id) DO NOTHING',
         [usageUser.sub],
@@ -222,12 +223,30 @@ const server = createServer(async (req, res) => {
         }
       }
       authAttempts.delete(ip);
-      const session = signSession({ sub: 'email:' + account.id, email: account.email, name: account.display_name || '', picture: '', exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 });
+      const accountUser = { sub: 'email:' + account.id, email: account.email, name: account.display_name || '' };
+      if (await saveUserProfile(accountUser)) return send(res, 403, { error: 'Ce compte est suspendu. Contacte le support Hiera.' });
+      const session = signSession({ sub: accountUser.sub, email: accountUser.email, name: accountUser.name, picture: '', exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 });
       res.setHeader('Set-Cookie', 'hiera_session=' + encodeURIComponent(session) + '; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=604800');
       return send(res, 200, { user: { email: account.email, name: account.display_name || '', picture: '' } });
     } catch (error) {
       console.error('Email authentication failed:', error instanceof Error ? error.message : 'unknown error');
       return send(res, 500, { error: 'Impossible de traiter la demande. Réessaie plus tard.' });
+    }
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/auth/forgot-password') {
+    try {
+      const body = await readJson(req);
+      const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254) {
+        return send(res, 400, { error: 'Adresse e-mail invalide.' });
+      }
+      await ensureAdminTables();
+      await pool.query('INSERT INTO hiera_password_reset_requests (email) VALUES ($1)', [email]);
+      return send(res, 200, { ok: true, message: 'Si cette adresse correspond à un compte, la demande a été transmise à l’équipe Hiera.' });
+    } catch (error) {
+      console.error('Password reset request failed:', error instanceof Error ? error.message : 'unknown error');
+      return send(res, 503, { error: 'La demande ne peut pas être enregistrée pour le moment.' });
     }
   }
 
@@ -245,6 +264,8 @@ const server = createServer(async (req, res) => {
       if (!profile?.sub || !profile.email || profile.email_verified !== true) {
         return send(res, 401, { error: 'Le compte Google n’a pas pu être vérifié.' });
       }
+      const googleUser = { sub: profile.sub, email: profile.email, name: profile.name || '' };
+      if (await saveUserProfile(googleUser)) return send(res, 403, { error: 'Ce compte est suspendu. Contacte le support Hiera.' });
       const session = signSession({
         sub: profile.sub, email: profile.email, name: profile.name || '',
         picture: profile.picture || '', exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
@@ -261,69 +282,6 @@ const server = createServer(async (req, res) => {
     return send(res, 200, { ok: true });
   }
 
-
-  if (req.method === 'POST' && url.pathname === '/api/billing/redeem-recovery-code') {
-    const user = readSession(req);
-    if (!user) return send(res, 401, { error: 'Connecte-toi avec Google avant de saisir le code.' });
-    if (!process.env.HIERA_RECOVERY_CODE) return send(res, 503, { error: 'Le code provisoire n’est pas encore configuré sur le serveur.' });
-    try {
-      const body = await readJson(req);
-      const code = typeof body.code === 'string' ? body.code.replace(/\\D/g, '') : '';
-      const plan = typeof body.plan === 'string' ? body.plan.toLowerCase() : '';
-      if (!['plus', 'pro', 'ultimate'].includes(plan)) return send(res, 400, { error: 'Choisis Plus, Pro ou Ultimate.' });
-      const expected = Buffer.from(process.env.HIERA_RECOVERY_CODE);
-      const supplied = Buffer.from(code);
-      if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) {
-        return send(res, 400, { error: 'Code incorrect.' });
-      }
-      await ensureUsageTable();
-      const client = await pool.connect();
-      try {
-        await client.query('BEGIN');
-        await client.query(`CREATE TABLE IF NOT EXISTS hiera_recovery_campaign (
-          campaign_id INTEGER PRIMARY KEY CHECK (campaign_id = 1),
-          activation_count INTEGER NOT NULL DEFAULT 0,
-          max_activations INTEGER NOT NULL DEFAULT 10
-        )`);
-        await client.query(`CREATE TABLE IF NOT EXISTS hiera_recovery_redemptions (
-          user_id TEXT PRIMARY KEY,
-          plan TEXT NOT NULL,
-          redeemed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )`);
-        await client.query('INSERT INTO hiera_recovery_campaign (campaign_id, activation_count, max_activations) VALUES (1, 0, 10) ON CONFLICT (campaign_id) DO NOTHING');
-        const campaign = await client.query('SELECT activation_count, max_activations FROM hiera_recovery_campaign WHERE campaign_id = 1 FOR UPDATE');
-        const prior = await client.query('SELECT plan FROM hiera_recovery_redemptions WHERE user_id = $1', [user.sub]);
-        if (prior.rowCount) {
-          await client.query('ROLLBACK');
-          return send(res, 409, { error: 'Ce compte a déjà utilisé le code provisoire.' });
-        }
-        const count = Number(campaign.rows[0].activation_count);
-        const maximum = Number(campaign.rows[0].max_activations);
-        if (count >= maximum) {
-          await client.query('ROLLBACK');
-          return send(res, 410, { error: 'Les 10 activations du code provisoire ont déjà été utilisées.' });
-        }
-        await client.query('INSERT INTO hiera_recovery_redemptions (user_id, plan) VALUES ($1, $2)', [user.sub, plan]);
-        await client.query('UPDATE hiera_recovery_campaign SET activation_count = activation_count + 1 WHERE campaign_id = 1');
-        await client.query(
-          `INSERT INTO hiera_usage (user_id, plan, period_started_at, message_count, token_count, voice_seconds)
-           VALUES ($1, $2, NOW(), 0, 0, 0)
-           ON CONFLICT (user_id) DO UPDATE SET plan = EXCLUDED.plan, period_started_at = NOW(), message_count = 0, token_count = 0, voice_seconds = 0, voice_last_ping_at = NULL`,
-          [user.sub, plan],
-        );
-        await client.query('COMMIT');
-        return send(res, 200, { ok: true, plan, activationsUsed: count + 1, activationsRemaining: maximum - count - 1, message: 'Forfait ' + plan.toUpperCase() + ' activé. Il te reste ' + (maximum - count - 1) + ' activation(s) provisoire(s).' });
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      } finally {
-        client.release();
-      }
-    } catch (activationError) {
-      console.error('Recovery code activation failed:', activationError instanceof Error ? activationError.message : 'unknown error');
-      return send(res, 500, { error: 'Impossible de traiter cette activation. Réessaie plus tard.' });
-    }
-  }
 
   if (req.method === 'POST' && url.pathname === '/api/billing/stripe-webhook') {
     if (!STRIPE_WEBHOOK_SECRET) return send(res, 503, { error: 'Le paiement sécurisé n’est pas encore configuré.' });
@@ -414,6 +372,38 @@ const server = createServer(async (req, res) => {
     await pool.query('ALTER TABLE hiera_usage ADD COLUMN IF NOT EXISTS voice_seconds INTEGER NOT NULL DEFAULT 0');
     await pool.query('ALTER TABLE hiera_usage ADD COLUMN IF NOT EXISTS voice_last_ping_at TIMESTAMPTZ');
     usageTableReady = true;
+  }
+
+  async function ensureAdminTables() {
+    if (!pool) throw new Error('La base de données Hiera est indisponible.');
+    await pool.query(`CREATE TABLE IF NOT EXISTS hiera_user_profiles (
+      user_id TEXT PRIMARY KEY,
+      email TEXT NOT NULL,
+      display_name TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      banned BOOLEAN NOT NULL DEFAULT FALSE,
+      ban_reason TEXT NOT NULL DEFAULT ''
+    )`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS hiera_password_reset_requests (
+      id BIGSERIAL PRIMARY KEY,
+      email TEXT NOT NULL,
+      requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      status TEXT NOT NULL DEFAULT 'pending'
+    )`);
+  }
+
+  async function saveUserProfile(user) {
+    await ensureAdminTables();
+    await pool.query(
+      `INSERT INTO hiera_user_profiles (user_id, email, display_name, created_at, last_seen_at)
+       VALUES ($1, $2, $3, NOW(), NOW())
+       ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email,
+         display_name = EXCLUDED.display_name, last_seen_at = NOW()`,
+      [user.sub, String(user.email || '').toLowerCase(), user.name || ''],
+    );
+    const result = await pool.query('SELECT banned FROM hiera_user_profiles WHERE user_id = $1', [user.sub]);
+    return result.rows[0]?.banned === true;
   }
 
   async function ensureIntegrationTable() {
@@ -726,6 +716,7 @@ const server = createServer(async (req, res) => {
       if (!chatUser) {
         return send(res, 401, { error: 'Connecte-toi avec Google pour que Hiera puisse appliquer ton quota personnel.' });
       }
+      if (await saveUserProfile(chatUser)) return send(res, 403, { error: 'Ce compte est suspendu. Contacte le support Hiera.' });
       let tokenBudget = 50000;
       let tokensAlreadyUsed = 0;
       try {
@@ -948,33 +939,76 @@ const server = createServer(async (req, res) => {
   }
 
 
-  if (req.method === 'GET' && (url.pathname === '/api/admin/me' || url.pathname === '/api/admin/overview')) {
-    const adminUser = readSession(req);
+  const adminUser = readSession(req);
+  const adminPaths = ['/api/admin/me', '/api/admin/overview', '/api/admin/account', '/api/admin/reset-request/resolve'];
+  if (adminPaths.includes(url.pathname)) {
     if (!adminUser) return send(res, 401, { error: 'Connecte-toi pour accéder à Hiera Control.' });
     const allowedAdmins = (process.env.HIERA_ADMIN_EMAILS || '').split(',').map((email) => email.trim().toLowerCase()).filter(Boolean);
     if (!adminUser.email || !allowedAdmins.includes(String(adminUser.email).toLowerCase())) {
       return send(res, 403, { error: 'Ce compte ne possède pas les droits administrateur.' });
     }
-    if (url.pathname === '/api/admin/me') return send(res, 200, { isAdmin: true, email: adminUser.email });
+    if (req.method === 'GET' && url.pathname === '/api/admin/me') return send(res, 200, { isAdmin: true, email: adminUser.email });
     try {
       if (!pool) throw new Error('La base de données Hiera est indisponible.');
       await ensureUsageTable();
+      await ensureAdminTables();
       await pool.query("CREATE TABLE IF NOT EXISTS hiera_accounts (id BIGSERIAL PRIMARY KEY, email TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL DEFAULT '', password_hash TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
-      const [accounts, usage, plans, recent] = await Promise.all([
-        pool.query('SELECT COUNT(*)::int AS total FROM hiera_accounts'),
-        pool.query("SELECT COUNT(*)::int AS total FROM hiera_usage WHERE period_started_at >= NOW() - INTERVAL '30 days'"),
-        pool.query("SELECT plan, COUNT(*)::int AS users, COALESCE(SUM(token_count), 0)::text AS tokens FROM hiera_usage GROUP BY plan ORDER BY plan"),
-        pool.query('SELECT email, display_name, created_at FROM hiera_accounts ORDER BY created_at DESC LIMIT 8'),
+      await pool.query(
+        `INSERT INTO hiera_user_profiles (user_id, email, display_name, created_at, last_seen_at)
+         SELECT 'email:' || id::text, email, display_name, created_at, created_at FROM hiera_accounts
+         ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, display_name = EXCLUDED.display_name`
+      );
+      if (req.method === 'POST' && url.pathname === '/api/admin/account') {
+        const body = await readJson(req);
+        const userId = typeof body.userId === 'string' ? body.userId.slice(0, 300) : '';
+        const plan = typeof body.plan === 'string' ? body.plan.toLowerCase() : '';
+        const banned = typeof body.banned === 'boolean' ? body.banned : null;
+        if (!userId || (!['basic', 'plus', 'pro', 'ultimate'].includes(plan) && banned === null)) {
+          return send(res, 400, { error: 'Modification de compte invalide.' });
+        }
+        const profile = await pool.query('SELECT user_id FROM hiera_user_profiles WHERE user_id = $1', [userId]);
+        if (!profile.rowCount) return send(res, 404, { error: 'Compte introuvable.' });
+        if (plan) {
+          await pool.query(
+            `INSERT INTO hiera_usage (user_id, plan, period_started_at, message_count, token_count)
+             VALUES ($1, $2, NOW(), 0, 0)
+             ON CONFLICT (user_id) DO UPDATE SET plan = EXCLUDED.plan`,
+            [userId, plan],
+          );
+        }
+        if (banned !== null) await pool.query('UPDATE hiera_user_profiles SET banned = $2 WHERE user_id = $1', [userId, banned]);
+        return send(res, 200, { ok: true });
+      }
+      if (req.method === 'POST' && url.pathname === '/api/admin/reset-request/resolve') {
+        const body = await readJson(req);
+        const id = Number(body.id);
+        if (!Number.isSafeInteger(id) || id <= 0) return send(res, 400, { error: 'Demande invalide.' });
+        await pool.query("UPDATE hiera_password_reset_requests SET status = 'resolved' WHERE id = $1", [id]);
+        return send(res, 200, { ok: true });
+      }
+      if (req.method !== 'GET' || url.pathname !== '/api/admin/overview') return send(res, 405, { error: 'Méthode non autorisée.' });
+      const [accounts, usage, plans, requests] = await Promise.all([
+        pool.query(`SELECT COUNT(*)::int AS total FROM hiera_user_profiles`),
+        pool.query("SELECT COUNT(*)::int AS total FROM hiera_user_profiles WHERE last_seen_at >= NOW() - INTERVAL '30 days'"),
+        pool.query("SELECT COALESCE(u.plan, 'basic') AS plan, COUNT(*)::int AS users, COALESCE(SUM(u.token_count), 0)::text AS tokens FROM hiera_user_profiles p LEFT JOIN hiera_usage u ON u.user_id = p.user_id GROUP BY COALESCE(u.plan, 'basic') ORDER BY plan"),
+        pool.query("SELECT id, email, requested_at, status FROM hiera_password_reset_requests WHERE status = 'pending' ORDER BY requested_at DESC LIMIT 50"),
       ]);
+      const userRows = await pool.query(
+        `SELECT p.user_id AS "userId", p.email, p.display_name AS name, p.created_at AS "createdAt",
+                p.last_seen_at AS "lastSeenAt", p.banned, COALESCE(u.plan, 'basic') AS plan,
+                COALESCE(u.token_count, 0)::text AS tokens
+         FROM hiera_user_profiles p LEFT JOIN hiera_usage u ON u.user_id = p.user_id
+         ORDER BY p.last_seen_at DESC NULLS LAST LIMIT 500`
+      );
       return send(res, 200, { isAdmin: true, email: adminUser.email, stats: {
         emailAccounts: Number(accounts.rows[0]?.total || 0),
         activeUsageProfiles30d: Number(usage.rows[0]?.total || 0),
         planBreakdown: plans.rows.map((row) => ({ plan: row.plan, users: Number(row.users), tokens: Number(row.tokens) })),
-        recentAccounts: recent.rows.map((row) => ({ email: row.email, name: row.display_name, createdAt: row.created_at })),
-      }});
+        recentAccounts: userRows.rows.slice(0, 8).map((row) => ({ email: row.email, name: row.name, createdAt: row.createdAt })),
+      }, users: userRows.rows, resetRequests: requests.rows });
     } catch (adminError) {
-      console.error('Hiera admin overview failed:', adminError instanceof Error ? adminError.message : 'unknown error');
-      return send(res, 503, { error: 'Les statistiques administrateur sont temporairement indisponibles.' });
+      console.error('Hiera admin request failed:', adminError instanceof Error ? adminError.message : 'unknown error');
+      return send(res, 503, { error: 'Les données administrateur sont temporairement indisponibles.' });
     }
   }
 
