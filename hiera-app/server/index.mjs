@@ -391,6 +391,59 @@ const server = createServer(async (req, res) => {
     }
   }
 
+
+  if (url.pathname.startsWith('/api/voice/')) {
+    if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
+    if (!isAuthorized(req)) return send(res, 401, { error: 'Code d’accès incorrect.' });
+    const voiceUser = readSession(req);
+    if (!voiceUser) return send(res, 401, { error: 'Connecte-toi avec Google pour utiliser le quota vocal.' });
+    try {
+      await ensureUsageTable();
+      const limits = { basic: 600, plus: 2700, pro: 7200, ultimate: 18000 };
+      const action = url.pathname.split('/').pop();
+      if (action === 'start') {
+        const result = await pool.query(
+          `INSERT INTO hiera_usage (user_id, plan, period_started_at, message_count, token_count, voice_seconds, voice_last_ping_at)
+           VALUES ($1, 'basic', NOW(), 0, 0, 0, NOW())
+           ON CONFLICT (user_id) DO UPDATE SET
+             period_started_at = CASE WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN NOW() ELSE hiera_usage.period_started_at END,
+             message_count = CASE WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 0 ELSE hiera_usage.message_count END,
+             token_count = CASE WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 0 ELSE hiera_usage.token_count END,
+             voice_seconds = CASE WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 0 ELSE hiera_usage.voice_seconds END
+           RETURNING plan, voice_seconds`,
+          [voiceUser.sub],
+        );
+        const row = result.rows[0];
+        const plan = limits[row.plan] ? row.plan : 'basic';
+        const limit = limits[plan];
+        const used = Number(row.voice_seconds || 0);
+        if (used >= limit) return send(res, 429, { error: 'Tu as atteint la durée vocale autorisée pour cette période de 24 heures.', secondsRemaining: 0 });
+        await pool.query('UPDATE hiera_usage SET voice_last_ping_at = NOW() WHERE user_id = $1', [voiceUser.sub]);
+        return send(res, 200, { ok: true, plan, secondsRemaining: limit - used });
+      }
+      if (action === 'heartbeat' || action === 'stop') {
+        const result = await pool.query(
+          `UPDATE hiera_usage SET
+             voice_seconds = voice_seconds + LEAST(GREATEST(0, $2 - voice_seconds), LEAST(30, GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(voice_last_ping_at, NOW()))))::INTEGER))),
+             voice_last_ping_at = CASE WHEN $3 THEN NULL ELSE NOW() END
+           WHERE user_id = $1 AND voice_last_ping_at IS NOT NULL AND voice_last_ping_at >= NOW() - INTERVAL '45 seconds'
+           RETURNING plan, voice_seconds`,
+          [voiceUser.sub, 18000, action === 'stop'],
+        );
+        if (!result.rowCount) return send(res, 409, { error: 'La session vocale a expiré. Relance le mode vocal.' });
+        const row = result.rows[0];
+        const plan = limits[row.plan] ? row.plan : 'basic';
+        const remaining = Math.max(0, limits[plan] - Number(row.voice_seconds || 0));
+        if (action === 'heartbeat' && remaining === 0) await pool.query('UPDATE hiera_usage SET voice_last_ping_at = NULL WHERE user_id = $1', [voiceUser.sub]);
+        return send(res, 200, { ok: true, plan, secondsRemaining: remaining });
+      }
+      return send(res, 404, { error: 'Action vocale inconnue.' });
+    } catch (voiceError) {
+      console.error('Hiera voice quota failed:', voiceError instanceof Error ? voiceError.message : 'unknown error');
+      return send(res, 503, { error: 'Impossible de vérifier le quota vocal. Réessaie plus tard.' });
+    }
+  }
+
   if (url.pathname === '/api/chat') {
     if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
     if (IS_PRODUCTION && !ACCESS_PASSWORD && !readSession(req)) {
