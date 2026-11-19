@@ -391,6 +391,37 @@ const server = createServer(async (req, res) => {
       requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       status TEXT NOT NULL DEFAULT 'pending'
     )`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS hiera_help_requests (
+      id BIGSERIAL PRIMARY KEY, user_id TEXT NOT NULL, email TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      responded_at TIMESTAMPTZ, expires_at TIMESTAMPTZ NOT NULL, shared_messages JSONB,
+      viewed_at TIMESTAMPTZ, closed_at TIMESTAMPTZ
+    `);
+    await pool.query(`CREATE TABLE IF NOT EXISTS hiera_safety_flags (
+      id BIGSERIAL PRIMARY KEY, user_id TEXT NOT NULL, email TEXT NOT NULL,
+      category TEXT NOT NULL, severity TEXT NOT NULL DEFAULT 'review',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), reviewed_at TIMESTAMPTZ
+    `);
+  }
+
+  async function recordSafetySignal(user, message) {
+    const text = String(message || '').slice(0, 12000).toLocaleLowerCase('fr');
+    const checks = [
+      { category: 'menace_directe', patterns: [/\\bje vais (?:te|le|la|les) tuer\\b/i, /\\bje vais (?:te|le|la) frapper\\b/i, /\\bje vais lui faire du mal\\b/i] },
+      { category: 'harcelement_cible', patterns: [/\\bje vais (?:la|le|les) harceler\\b/i, /\\bje vais publier (?:son|sa|ses) (?:photos?|adresse|numero)\\b/i, /\\bje vais le/la faire chanter\\b/i] },
+      { category: 'donnees_sensibles', patterns: [/\\b(?:donne|envoie|obtiens) moi (?:ton|son) mot de passe\\b/i, /\\b(?:numero|code) de carte bancaire\\b/i] },
+    ];
+    const match = checks.find((check) => check.patterns.some((pattern) => pattern.test(text)));
+    if (!match) return;
+    await ensureAdminTables();
+    await pool.query(
+      `INSERT INTO hiera_safety_flags (user_id, email, category)
+       SELECT $1, $2, $3 WHERE NOT EXISTS (
+         SELECT 1 FROM hiera_safety_flags WHERE user_id = $1 AND category = $3
+         AND created_at > NOW() - INTERVAL '15 minutes'
+       )`,
+      [user.sub, String(user.email || '').toLowerCase(), match.category],
+    );
   }
 
   async function saveUserProfile(user) {
@@ -717,6 +748,8 @@ const server = createServer(async (req, res) => {
         return send(res, 401, { error: 'Connecte-toi avec Google pour que Hiera puisse appliquer ton quota personnel.' });
       }
       if (await saveUserProfile(chatUser)) return send(res, 403, { error: 'Ce compte est suspendu. Contacte le support Hiera.' });
+      const latestUserMessage = [...body.messages].reverse().find((message) => message?.role === 'user' && typeof message.content === 'string');
+      if (latestUserMessage) await recordSafetySignal(chatUser, latestUserMessage.content);
       let tokenBudget = 50000;
       let tokensAlreadyUsed = 0;
       try {
@@ -939,8 +972,48 @@ const server = createServer(async (req, res) => {
   }
 
 
+  if (url.pathname === '/api/help/pending' || url.pathname === '/api/help/respond') {
+    const helpUser = readSession(req);
+    if (!helpUser) return send(res, 401, { error: 'Connecte-toi pour gérer une demande d’aide.' });
+    try {
+      await ensureAdminTables();
+      if (req.method === 'GET' && url.pathname === '/api/help/pending') {
+        const result = await pool.query(
+          `SELECT id, email, created_at AS "createdAt", expires_at AS "expiresAt"
+           FROM hiera_help_requests WHERE user_id = $1 AND status = 'pending' AND expires_at > NOW()
+           ORDER BY created_at DESC LIMIT 1`, [helpUser.sub],
+        );
+        return send(res, 200, { request: result.rows[0] || null });
+      }
+      if (req.method === 'POST' && url.pathname === '/api/help/respond') {
+        const body = await readJson(req);
+        const id = Number(body.id);
+        if (!Number.isSafeInteger(id) || id <= 0 || typeof body.approved !== 'boolean') return send(res, 400, { error: 'Réponse invalide.' });
+        let sharedMessages = null;
+        if (body.approved) {
+          if (!Array.isArray(body.messages) || body.messages.length > 30) return send(res, 400, { error: 'La conversation partagée est invalide.' });
+          sharedMessages = body.messages.filter((item) => ['user', 'assistant'].includes(item?.role) && typeof item.content === 'string')
+            .slice(-30).map((item) => ({ role: item.role, content: item.content.slice(0, 12000) }));
+        }
+        const result = await pool.query(
+          `UPDATE hiera_help_requests SET status = $3, responded_at = NOW(),
+             shared_messages = $4::jsonb,
+             expires_at = CASE WHEN $3 = 'approved' THEN NOW() + INTERVAL '20 minutes' ELSE expires_at END
+           WHERE id = $1 AND user_id = $2 AND status = 'pending' AND expires_at > NOW() RETURNING id`,
+          [id, helpUser.sub, body.approved ? 'approved' : 'declined', sharedMessages ? JSON.stringify(sharedMessages) : null],
+        );
+        if (!result.rowCount) return send(res, 409, { error: 'Cette demande a expiré ou a déjà été traitée.' });
+        return send(res, 200, { ok: true });
+      }
+      return send(res, 405, { error: 'Méthode non autorisée.' });
+    } catch (helpError) {
+      console.error('Hiera help consent failed:', helpError instanceof Error ? helpError.message : 'unknown error');
+      return send(res, 503, { error: 'Le service d’aide est temporairement indisponible.' });
+    }
+  }
+
   const adminUser = readSession(req);
-  const adminPaths = ['/api/admin/me', '/api/admin/overview', '/api/admin/account', '/api/admin/reset-request/resolve'];
+  const adminPaths = ['/api/admin/me', '/api/admin/overview', '/api/admin/account', '/api/admin/reset-request/resolve', '/api/admin/help/request', '/api/admin/help/view', '/api/admin/help/close'];
   if (adminPaths.includes(url.pathname)) {
     if (!adminUser) return send(res, 401, { error: 'Connecte-toi pour accéder à Hiera Control.' });
     const allowedAdmins = (process.env.HIERA_ADMIN_EMAILS || '').split(',').map((email) => email.trim().toLowerCase()).filter(Boolean);
@@ -986,17 +1059,56 @@ const server = createServer(async (req, res) => {
         await pool.query("UPDATE hiera_password_reset_requests SET status = 'resolved' WHERE id = $1", [id]);
         return send(res, 200, { ok: true });
       }
+      if (req.method === 'POST' && url.pathname === '/api/admin/help/request') {
+        const body = await readJson(req);
+        const userId = typeof body.userId === 'string' ? body.userId.slice(0, 300) : '';
+        if (!userId) return send(res, 400, { error: 'Compte invalide.' });
+        const profile = await pool.query('SELECT user_id, email FROM hiera_user_profiles WHERE user_id = $1', [userId]);
+        if (!profile.rowCount) return send(res, 404, { error: 'Compte introuvable.' });
+        const pending = await pool.query("SELECT id FROM hiera_help_requests WHERE user_id = $1 AND status = 'pending' AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1", [userId]);
+        if (pending.rowCount) return send(res, 200, { ok: true, id: pending.rows[0].id, existing: true });
+        const created = await pool.query(
+          `INSERT INTO hiera_help_requests (user_id, email, expires_at) VALUES ($1, $2, NOW() + INTERVAL '10 minutes') RETURNING id`,
+          [userId, profile.rows[0].email],
+        );
+        return send(res, 200, { ok: true, id: created.rows[0].id });
+      }
+      if (req.method === 'POST' && url.pathname === '/api/admin/help/view') {
+        const body = await readJson(req);
+        const id = Number(body.id);
+        if (!Number.isSafeInteger(id) || id <= 0) return send(res, 400, { error: 'Demande invalide.' });
+        const viewed = await pool.query(
+          `UPDATE hiera_help_requests SET viewed_at = NOW()
+           WHERE id = $1 AND status = 'approved' AND viewed_at IS NULL AND expires_at > NOW()
+           RETURNING email, shared_messages AS messages, expires_at AS "expiresAt"`,
+          [id],
+        );
+        if (!viewed.rowCount) return send(res, 409, { error: 'Autorisation expirée ou déjà utilisée.' });
+        return send(res, 200, { email: viewed.rows[0].email, messages: viewed.rows[0].messages || [], expiresAt: viewed.rows[0].expiresAt });
+      }
+      if (req.method === 'POST' && url.pathname === '/api/admin/help/close') {
+        const body = await readJson(req);
+        const id = Number(body.id);
+        if (!Number.isSafeInteger(id) || id <= 0) return send(res, 400, { error: 'Demande invalide.' });
+        await pool.query("UPDATE hiera_help_requests SET status = 'closed', shared_messages = NULL, closed_at = NOW() WHERE id = $1 AND status IN ('approved','declined','pending')", [id]);
+        return send(res, 200, { ok: true });
+      }
       if (req.method !== 'GET' || url.pathname !== '/api/admin/overview') return send(res, 405, { error: 'Méthode non autorisée.' });
-      const [accounts, usage, plans, requests] = await Promise.all([
+      const [accounts, usage, plans, requests, flags] = await Promise.all([
         pool.query(`SELECT COUNT(*)::int AS total FROM hiera_user_profiles`),
         pool.query("SELECT COUNT(*)::int AS total FROM hiera_user_profiles WHERE last_seen_at >= NOW() - INTERVAL '30 days'"),
         pool.query("SELECT COALESCE(u.plan, 'basic') AS plan, COUNT(*)::int AS users, COALESCE(SUM(u.token_count), 0)::text AS tokens FROM hiera_user_profiles p LEFT JOIN hiera_usage u ON u.user_id = p.user_id GROUP BY COALESCE(u.plan, 'basic') ORDER BY plan"),
         pool.query("SELECT id, email, requested_at, status FROM hiera_password_reset_requests WHERE status = 'pending' ORDER BY requested_at DESC LIMIT 50"),
+        pool.query('SELECT id, user_id AS "userId", email, category, created_at AS "createdAt" FROM hiera_safety_flags WHERE reviewed_at IS NULL ORDER BY created_at DESC LIMIT 100'),
       ]);
       const userRows = await pool.query(
         `SELECT p.user_id AS "userId", p.email, p.display_name AS name, p.created_at AS "createdAt",
                 p.last_seen_at AS "lastSeenAt", p.banned, COALESCE(u.plan, 'basic') AS plan,
-                COALESCE(u.token_count, 0)::text AS tokens
+                COALESCE(u.token_count, 0)::text AS tokens,
+                (SELECT COUNT(*)::int FROM hiera_safety_flags f WHERE f.user_id = p.user_id AND f.reviewed_at IS NULL) AS "safetyFlagCount",
+                (SELECT MAX(f.created_at) FROM hiera_safety_flags f WHERE f.user_id = p.user_id AND f.reviewed_at IS NULL) AS "safetyFlagLatest",
+                (SELECT h.status FROM hiera_help_requests h WHERE h.user_id = p.user_id AND h.status IN ('pending','approved') AND h.expires_at > NOW() ORDER BY h.created_at DESC LIMIT 1) AS "helpStatus",
+                (SELECT h.id FROM hiera_help_requests h WHERE h.user_id = p.user_id AND h.status IN ('pending','approved') AND h.expires_at > NOW() ORDER BY h.created_at DESC LIMIT 1) AS "helpRequestId"
          FROM hiera_user_profiles p LEFT JOIN hiera_usage u ON u.user_id = p.user_id
          ORDER BY p.last_seen_at DESC NULLS LAST LIMIT 500`
       );
@@ -1005,7 +1117,7 @@ const server = createServer(async (req, res) => {
         activeUsageProfiles30d: Number(usage.rows[0]?.total || 0),
         planBreakdown: plans.rows.map((row) => ({ plan: row.plan, users: Number(row.users), tokens: Number(row.tokens) })),
         recentAccounts: userRows.rows.slice(0, 8).map((row) => ({ email: row.email, name: row.name, createdAt: row.createdAt })),
-      }, users: userRows.rows, resetRequests: requests.rows });
+      }, users: userRows.rows, resetRequests: requests.rows, safetyFlags: flags.rows });
     } catch (adminError) {
       console.error('Hiera admin request failed:', adminError instanceof Error ? adminError.message : 'unknown error');
       return send(res, 503, { error: 'Les données administrateur sont temporairement indisponibles.' });
