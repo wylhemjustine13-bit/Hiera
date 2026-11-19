@@ -947,6 +947,37 @@ const server = createServer(async (req, res) => {
     }
   }
 
+
+  if (req.method === 'GET' && (url.pathname === '/api/admin/me' || url.pathname === '/api/admin/overview')) {
+    const adminUser = readSession(req);
+    if (!adminUser) return send(res, 401, { error: 'Connecte-toi pour accéder à Hiera Control.' });
+    const allowedAdmins = (process.env.HIERA_ADMIN_EMAILS || '').split(',').map((email) => email.trim().toLowerCase()).filter(Boolean);
+    if (!adminUser.email || !allowedAdmins.includes(String(adminUser.email).toLowerCase())) {
+      return send(res, 403, { error: 'Ce compte ne possède pas les droits administrateur.' });
+    }
+    if (url.pathname === '/api/admin/me') return send(res, 200, { isAdmin: true, email: adminUser.email });
+    try {
+      if (!pool) throw new Error('La base de données Hiera est indisponible.');
+      await ensureUsageTable();
+      await pool.query("CREATE TABLE IF NOT EXISTS hiera_accounts (id BIGSERIAL PRIMARY KEY, email TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL DEFAULT '', password_hash TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+      const [accounts, usage, plans, recent] = await Promise.all([
+        pool.query('SELECT COUNT(*)::int AS total FROM hiera_accounts'),
+        pool.query("SELECT COUNT(*)::int AS total FROM hiera_usage WHERE period_started_at >= NOW() - INTERVAL '30 days'"),
+        pool.query("SELECT plan, COUNT(*)::int AS users, COALESCE(SUM(token_count), 0)::text AS tokens FROM hiera_usage GROUP BY plan ORDER BY plan"),
+        pool.query('SELECT email, display_name, created_at FROM hiera_accounts ORDER BY created_at DESC LIMIT 8'),
+      ]);
+      return send(res, 200, { isAdmin: true, email: adminUser.email, stats: {
+        emailAccounts: Number(accounts.rows[0]?.total || 0),
+        activeUsageProfiles30d: Number(usage.rows[0]?.total || 0),
+        planBreakdown: plans.rows.map((row) => ({ plan: row.plan, users: Number(row.users), tokens: Number(row.tokens) })),
+        recentAccounts: recent.rows.map((row) => ({ email: row.email, name: row.display_name, createdAt: row.created_at })),
+      }});
+    } catch (adminError) {
+      console.error('Hiera admin overview failed:', adminError instanceof Error ? adminError.message : 'unknown error');
+      return send(res, 503, { error: 'Les statistiques administrateur sont temporairement indisponibles.' });
+    }
+  }
+
   if (req.method === 'GET' || req.method === 'HEAD') {
     return serveFrontend(req, res, url.pathname);
   }
