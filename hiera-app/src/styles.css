@@ -923,3 +923,35 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 :root[data-theme="light"] .private-toggle{color:#5e426f;border-color:#241b3022;background:#241b3008}
 :root[data-theme="light"] .private-toggle.active{color:#65418b;border-color:#b58be8;background:#8c52d514}
 @media(max-width:650px){.private-toggle{padding:7px 9px;font-size:10px}}
+
+
+/* Hiera Control — panneau administrateur */
+.admin-open-button{margin-left:8px;padding:7px 11px;border:1px solid #c49a55;border-radius:10px;background:#b78a301c;color:#f0d69b;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer}
+.admin-open-button:disabled{opacity:.6;cursor:wait}
+.admin-overlay{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:16px;background:#05030ddd;backdrop-filter:blur(10px)}
+.admin-panel{width:min(760px,100%);max-height:90vh;overflow:auto;padding:20px;border:1px solid #b68b4d88;border-radius:20px;background:linear-gradient(145deg,#1b1428,#100d1c);box-shadow:0 24px 90px #000a;color:#f4edff}
+.admin-panel-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px}
+.admin-panel-header h2{margin:5px 0;font-size:25px}
+.admin-panel-header small,.admin-kicker{color:#c5a66e;font-size:10px}
+.admin-kicker{letter-spacing:1.5px;font-weight:800}
+.admin-panel-header>button{width:36px;height:36px;border:0;border-radius:10px;background:#ffffff12;color:#fff;font-size:23px;cursor:pointer}
+.admin-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.admin-stats article{padding:16px;border:1px solid #b68b4d44;border-radius:13px;background:#ffffff08}
+.admin-stats span,.admin-stats strong{display:block}
+.admin-stats span{color:#b8a9c9;font-size:11px}
+.admin-stats strong{margin-top:8px;font-size:27px}
+.admin-section{margin-top:19px}
+.admin-section h3{margin:0 0 9px;font-size:13px}
+.admin-section p{color:#b8a9c9;font-size:12px}
+.admin-plan-list,.admin-account-list{display:grid;gap:7px}
+.admin-plan-list>div,.admin-account-list>div{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #ffffff14;border-radius:10px;background:#ffffff06}
+.admin-plan-list span,.admin-account-list span{font-size:12px;font-weight:700}
+.admin-plan-list b{margin-left:auto;font-size:11px}
+.admin-plan-list small,.admin-account-list small,.admin-account-list time{color:#b8a9c9;font-size:10px}
+.admin-account-list small{margin-left:auto}
+.admin-panel-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:20px;padding-top:13px;border-top:1px solid #ffffff18;color:#b8a9c9;font-size:10px}
+.admin-panel-footer button{padding:8px 11px;border:1px solid #b68b4d77;border-radius:9px;background:#b78a3022;color:#f0d69b;cursor:pointer}
+:root[data-theme="light"] .admin-panel{background:#fff;color:#30223d}
+:root[data-theme="light"] .admin-stats article,:root[data-theme="light"] .admin-plan-list>div,:root[data-theme="light"] .admin-account-list>div{background:#faf7ff;border-color:#e3d6ed}
+:root[data-theme="light"] .admin-stats span,:root[data-theme="light"] .admin-section p,:root[data-theme="light"] .admin-plan-list small,:root[data-theme="light"] .admin-account-list small,:root[data-theme="light"] .admin-account-list time,:root[data-theme="light"] .admin-panel-footer{color:#756982}
+@media(max-width:560px){.admin-overlay{padding:0}.admin-panel{width:100%;height:100%;max-height:100%;border-radius:0;padding:16px}.admin-stats{grid-template-columns:1fr}.admin-plan-list>div{flex-wrap:wrap}.admin-plan-list b{margin-left:auto}.admin-account-list>div{align-items:flex-start;flex-direction:column;gap:4px}.admin-account-list small{margin-left:0}.admin-open-button{font-size:9px;padding:6px 8px}}
