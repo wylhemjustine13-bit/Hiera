@@ -696,6 +696,8 @@ const server = createServer(async (req, res) => {
       if (!chatUser) {
         return send(res, 401, { error: 'Connecte-toi avec Google pour que Hiera puisse appliquer ton quota personnel.' });
       }
+      let tokenBudget = 50000;
+      let tokensAlreadyUsed = 0;
       try {
         await ensureUsageTable();
         const messageLimits = { basic: 100, plus: 300, pro: 1200, ultimate: 3000 };
@@ -728,8 +730,8 @@ const server = createServer(async (req, res) => {
         }
         const activeUsage = usage.rows[0];
         const activePlan = tokenBudgets[activeUsage.plan] ? activeUsage.plan : 'basic';
-        const tokenBudget = tokenBudgets[activePlan];
-        const tokensAlreadyUsed = Number(activeUsage.token_count || 0);
+        tokenBudget = tokenBudgets[activePlan];
+        tokensAlreadyUsed = Number(activeUsage.token_count || 0);
       } catch (quotaError) {
         console.error('Hiera usage quota failed:', quotaError instanceof Error ? quotaError.message : 'unknown error');
         return send(res, 503, { error: 'Impossible de vérifier ton quota. Vérifie la base de données de Hiera puis réessaie.' });
