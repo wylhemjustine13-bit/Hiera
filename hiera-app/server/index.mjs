@@ -16,7 +16,7 @@ if (existsSync(envPath)) {
 }
 
 const PORT = Number(process.env.PORT || process.env.HIERA_API_PORT || 3001);
-const MAX_BODY = 1_000_000;
+const MAX_BODY = 12 * 1024 * 1024;
 const groqModels = new Set(['openai/gpt-oss-20b', 'openai/gpt-oss-120b']);
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const ACCESS_PASSWORD = process.env.HIERA_ACCESS_PASSWORD;
@@ -400,7 +400,16 @@ const server = createServer(async (req, res) => {
         if (raw.length > MAX_BODY) return send(res, 413, { error: 'Message trop volumineux.' });
       }
       const body = JSON.parse(raw || '{}');
-      const model = groqModels.has(body.model) ? body.model : 'openai/gpt-oss-20b';
+      const requestedModel = groqModels.has(body.model) ? body.model : 'openai/gpt-oss-20b';
+      const attachments = Array.isArray(body.attachments) ? body.attachments.slice(0, 5) : [];
+      const imageAttachments = attachments.filter((item) => typeof item?.dataUrl === 'string');
+      if (imageAttachments.length > 3) return send(res, 400, { error: 'Tu peux joindre au maximum 3 images par message.' });
+      for (const item of imageAttachments) {
+        if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(item.dataUrl) || item.dataUrl.length > 2_900_000) {
+          return send(res, 400, { error: 'Image invalide ou trop volumineuse. Limite : 2 Mo par image, en JPG, PNG ou WebP.' });
+        }
+      }
+      const model = imageAttachments.length ? 'qwen/qwen3.8-27b' : requestedModel;
       const apiKey = GROQ_API_KEY;
       if (!apiKey) {
         return send(res, 503, { error: 'Clé Groq manquante. Configure GROQ_API_KEY dans Render.' });
@@ -467,15 +476,32 @@ const server = createServer(async (req, res) => {
         console.error('Hiera usage quota failed:', quotaError instanceof Error ? quotaError.message : 'unknown error');
         return send(res, 503, { error: 'Impossible de vérifier ton quota. Vérifie la base de données de Hiera puis réessaie.' });
       }
-      const messages = [{
-        role: 'system',
-        content: `Tu es ${assistantName}, un assistant IA utile, honnête et bienveillant. Réponds toujours en ${responseLanguage}, sauf si l'utilisateur demande explicitement une autre langue. ${responseStyle} ${familyStyle} Utilise parfois un ou deux émojis pertinents pour rendre tes réponses expressives, mais reste naturel et n'en ajoute pas à chaque phrase. N'invente pas de capacités ou d'actions que tu n'as pas réalisées. Respecte les règles de sécurité et refuse les demandes dangereuses. Si l'outil Google Agenda est disponible, utilise-le pour répondre aux questions sur les rendez-vous. Ne prétends jamais avoir consulté l'agenda sans avoir réellement appelé l'outil. Pour toute création, modification ou suppression, demande d'abord une confirmation explicite et n'effectue aucune modification sans confirmation.`,
-      }, ...body.messages.map((message) => {
+      const documentNotes = attachments
+        .filter((item) => typeof item?.text === 'string')
+        .map((item) => {
+          const name = typeof item.name === 'string' ? item.name.slice(0, 120) : 'fichier texte';
+          return `\\n\\n[Contenu du fichier ${name}]\\n${item.text.slice(0, 50000)}`;
+        }).join('');
+      const userMessages = body.messages.map((message) => {
         if (!['user', 'assistant'].includes(message?.role) || typeof message.content !== 'string') {
           throw new Error('Format de message invalide.');
         }
         return { role: message.role, content: message.content.slice(0, 20000) };
-      })];
+      });
+      const lastUserIndex = userMessages.map((message) => message.role).lastIndexOf('user');
+      if (lastUserIndex < 0) return send(res, 400, { error: 'Aucun message utilisateur trouvé.' });
+      userMessages[lastUserIndex].content += documentNotes;
+      if (imageAttachments.length) {
+        const promptText = userMessages[lastUserIndex].content || 'Analyse cette image et réponds à ma question.';
+        userMessages[lastUserIndex].content = [
+          { type: 'text', text: promptText },
+          ...imageAttachments.map((item) => ({ type: 'image_url', image_url: { url: item.dataUrl } })),
+        ];
+      }
+      const messages = [{
+        role: 'system',
+        content: `Tu es ${assistantName}, un assistant IA utile, honnête et bienveillant. Réponds toujours en ${responseLanguage}, sauf si l'utilisateur demande explicitement une autre langue. ${responseStyle} ${familyStyle} Utilise parfois un ou deux émojis pertinents pour rendre tes réponses expressives, mais reste naturel et n'en ajoute pas à chaque phrase. N'invente pas de capacités ou d'actions que tu n'as pas réalisées. Respecte les règles de sécurité et refuse les demandes dangereuses. Si l'utilisateur joint une image, analyse uniquement ce qui est réellement visible et signale toute incertitude. Si l'utilisateur joint le contenu d'un fichier, base ton analyse sur le texte fourni et indique si le document semble incomplet. Respecte les règles de sécurité et refuse les demandes dangereuses. Si l'outil Google Agenda est disponible, utilise-le pour répondre aux questions sur les rendez-vous. Ne prétends jamais avoir consulté l'agenda sans avoir réellement appelé l'outil. Pour toute création, modification ou suppression, demande d'abord une confirmation explicite et n'effectue aucune modification sans confirmation.`,
+      }, ...userMessages];
 
       const latestUserMessage = [...body.messages].reverse().find((message) => message?.role === 'user' && typeof message.content === 'string')?.content || '';
       const asksCalendar = /agenda|calendrier|rendez[- ]?vous|événements?|planning|mon emploi du temps|mes horaires/i.test(latestUserMessage);
