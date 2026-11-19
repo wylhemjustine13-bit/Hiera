@@ -456,12 +456,10 @@ export default function App() {
   }
 
   function removeAttachment(id: string) {
-    setAttachments((current) => {
-      const item = current.find((entry) => entry.id === id);
-      if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
-      if (previewAttachment?.id === id) setPreviewAttachment(null);
-      return current.filter((item) => item.id !== id);
-    });
+    const item = attachments.find((entry) => entry.id === id);
+    if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    if (previewAttachment?.id === id) setPreviewAttachment(null);
+    setAttachments((current) => current.filter((entry) => entry.id !== id));
   }
 
   async function sendText(content: string, fromVoice = false, includedAttachments: HieraAttachment[] = []) {
