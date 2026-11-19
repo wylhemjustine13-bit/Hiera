@@ -81,6 +81,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem('hiera-conversations', JSON.stringify(conversations)); }, [conversations]);
   useEffect(() => { localStorage.setItem('hiera-settings', JSON.stringify(settingsValues)); document.documentElement.dataset.theme = settingsValues.theme || 'dark'; }, [settingsValues]);
   useEffect(() => { localStorage.setItem('hiera-model', model); }, [model]);
+  useEffect(() => () => { if (voiceHeartbeatRef.current !== null) window.clearInterval(voiceHeartbeatRef.current); if (liveVoiceRef.current) void fetch('/api/voice/stop', { method: 'POST' }); }, []);
 
   useEffect(() => {
     let active = true;
