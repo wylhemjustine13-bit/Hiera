@@ -47,6 +47,11 @@ export default function App() {
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const [model, setModel] = useState(() => localStorage.getItem('hiera-model') || 'groq:openai/gpt-oss-20b');
   const [busy, setBusy] = useState(false);
+  const chatAbortRef = useRef<AbortController | null>(null);
+  const [speechActive, setSpeechActive] = useState(false);
+  const [writingOpen, setWritingOpen] = useState(false);
+  const [writingSource, setWritingSource] = useState('');
+  const writingEditorRef = useRef<HTMLDivElement>(null);
   const busyRef = useRef(false);
   const messagesRef = useRef<Message[]>(messages);
   messagesRef.current = messages;
@@ -240,6 +245,45 @@ export default function App() {
     }
   }
 
+  function stopSpeech() {
+    window.speechSynthesis?.cancel();
+    setSpeechActive(false);
+    setVoiceTestStatus('Lecture arrêtée');
+    if (liveVoiceRef.current) {
+      recognitionRef.current?.stop();
+      recognitionRef.current = null;
+      setVoiceStatus('Lecture arrêtée');
+    }
+  }
+
+  function stopGeneration() {
+    chatAbortRef.current?.abort();
+    chatAbortRef.current = null;
+    busyRef.current = false;
+    setBusy(false);
+    setError('Recherche arrêtée. Tu peux envoyer un nouveau message.');
+  }
+
+  function openWritingEditor(content = '') {
+    setWritingSource(content);
+    setWritingOpen(true);
+  }
+
+  function formatWriting(command: string, value?: string) {
+    writingEditorRef.current?.focus();
+    document.execCommand(command, false, value);
+  }
+
+  async function copyWriting() {
+    const text = writingEditorRef.current?.innerText || '';
+    try { await navigator.clipboard.writeText(text); setVoiceTestStatus('Texte copié'); }
+    catch { setError('La copie est indisponible sur ce navigateur.'); }
+  }
+
+  useEffect(() => {
+    if (writingOpen && writingEditorRef.current) writingEditorRef.current.innerText = writingSource;
+  }, [writingOpen, writingSource]);
+
   function speakText(text: string, voiceKey: 'directVoice' | 'readVoice' = 'readVoice') {
     if (!('speechSynthesis' in window)) {
       setError("La synthèse vocale n'est pas prise en charge par ce navigateur.");
@@ -256,20 +300,24 @@ export default function App() {
     if (selectedVoice) utterance.voice = selectedVoice;
     utterance.rate = 1;
     utterance.onstart = () => {
+      setSpeechActive(true);
       if (voiceKey === 'directVoice') setVoiceStatus('Hiera parle…');
       else setVoiceTestStatus('Lecture en cours…');
     };
     utterance.onend = () => {
+      setSpeechActive(false);
       if (voiceKey === 'directVoice') {
         if (liveVoiceRef.current) startVoiceListening();
         else setVoiceStatus('Réponse vocale terminée');
       } else setVoiceTestStatus('Lecture terminée');
     };
     utterance.onerror = () => {
+      setSpeechActive(false);
       if (voiceKey === 'directVoice') setVoiceStatus('Lecture vocale indisponible');
       else setVoiceTestStatus('Lecture indisponible');
     };
     window.speechSynthesis.cancel();
+    setSpeechActive(true);
     window.speechSynthesis.speak(utterance);
   }
 
@@ -388,8 +436,11 @@ export default function App() {
     setError('');
     setBusy(true);
     if (fromVoice) setVoiceStatus('Hiera prépare sa réponse…');
+    const controller = new AbortController();
+    chatAbortRef.current = controller;
     try {
       const response = await fetch('/api/chat', {
+        signal: controller.signal,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -414,9 +465,14 @@ export default function App() {
         speakText(data.reply, 'directVoice');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Impossible de joindre Hiera.');
-      if (liveVoiceRef.current) setVoiceStatus('Erreur de connexion');
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Recherche arrêtée.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Impossible de joindre Hiera.');
+        if (liveVoiceRef.current) setVoiceStatus('Erreur de connexion');
+      }
     } finally {
+      if (chatAbortRef.current === controller) chatAbortRef.current = null;
       busyRef.current = false;
       setBusy(false);
     }
@@ -632,7 +688,7 @@ export default function App() {
                     {message.role === 'assistant' && <span className="message-mark">✳</span>}
                     <div className="message-body">
                       <p>{message.content}</p>
-                      {message.role === 'assistant' && <div className="message-actions"><button className="copy-message" type="button" onClick={() => copyMessage(message.content, index)} aria-label="Copier la réponse" title="Copier la réponse">{copiedMessageIndex === index ? '✓ Copié' : '⧉ Copier'}</button><button className="copy-message" type="button" onClick={() => speakText(message.content, 'readVoice')} aria-label="Lire la réponse à haute voix" title="Lire à haute voix">♫ Lire</button></div>}
+                      {message.role === 'assistant' && <div className="message-actions"><button className="copy-message" type="button" onClick={() => copyMessage(message.content, index)} aria-label="Copier la réponse" title="Copier la réponse">{copiedMessageIndex === index ? '✓ Copié' : '⧉ Copier'}</button><button className="copy-message" type="button" onClick={() => speakText(message.content, 'readVoice')} aria-label="Lire la réponse à haute voix" title="Lire à haute voix">♫ Lire</button><button className="copy-message" type="button" onClick={() => openWritingEditor(message.content)}>✎ Modifier</button></div>}
                       {message.role === 'assistant' && typeof message.tokensUsed === 'number' && <small className="token-usage-note">≈ {message.tokensUsed.toLocaleString('fr-FR')} jetons utilisés pour cet échange</small>}
                     </div>
                   </article>
@@ -645,10 +701,11 @@ export default function App() {
               {attachments.length > 0 && <div className="attachment-list">{attachments.map((item) => <div className="attachment-chip" key={item.id}>{item.dataUrl ? <img src={item.dataUrl} alt={item.name} /> : <span className="attachment-file-icon">▤</span>}<span title={item.name}>{item.name}</span><button type="button" onClick={() => removeAttachment(item.id)} aria-label={`Retirer ${item.name}`}>×</button></div>)}</div>}
               <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { const enterBehavior = settingsValues.enterBehavior || (settingsValues.enterToSend === false ? 'newline' : 'send'); if (event.key === "Enter" && !event.shiftKey && enterBehavior === 'send') { event.preventDefault(); (event.currentTarget.form as HTMLFormElement)?.requestSubmit(); } }} placeholder="Écris un message à Hiera…" rows={1} aria-label="Message à Hiera" disabled={busy} />
               {error && <p className="error-message" role="alert">{error}</p>}
-              <div className="composer-footer"><span>Pose ta question à Hiera</span><div className="composer-actions"><button type="button" className="attach-toggle" onClick={() => attachmentInputRef.current?.click()} disabled={busy} aria-label="Joindre une photo ou un fichier" title="Joindre une photo ou un fichier">＋</button><button type="button" className={liveVoice ? 'voice-toggle active' : 'voice-toggle'} onClick={liveVoice ? stopLiveVoice : startLiveVoice} aria-label={liveVoice ? 'Arrêter la conversation vocale' : 'Démarrer la conversation vocale'}>{liveVoice ? '■' : <svg className="voice-mic-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5 10.5v1.5a7 7 0 0 0 14 0v-1.5M12 19v3M8 22h8"/></svg>}</button><button type="submit" disabled={(!draft.trim() && !attachments.length) || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div></div>{liveVoice && <p className="voice-status" role="status">{voiceStatus} · Micro actif uniquement pendant l'écoute. <button type="button" onClick={stopLiveVoice}>Arrêter</button></p>}
+              <div className="composer-footer"><span>Pose ta question à Hiera</span><div className="composer-actions"><button type="button" className="copy-message" onClick={() => openWritingEditor(draft)} title="Ouvrir l’espace d’écriture">✎ Écrire</button>{busy && <button type="button" className="copy-message stop-generation" onClick={stopGeneration}>■ Arrêter Hiera</button>}{speechActive && <button type="button" className="copy-message stop-generation" onClick={stopSpeech}>■ Arrêter le vocal</button>}<button type="button" className="attach-toggle" onClick={() => attachmentInputRef.current?.click()} disabled={busy} aria-label="Joindre une photo ou un fichier" title="Joindre une photo ou un fichier">＋</button><button type="button" className={liveVoice ? 'voice-toggle active' : 'voice-toggle'} onClick={liveVoice ? stopLiveVoice : startLiveVoice} aria-label={liveVoice ? 'Arrêter la conversation vocale' : 'Démarrer la conversation vocale'}>{liveVoice ? '■' : <svg className="voice-mic-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5 10.5v1.5a7 7 0 0 0 14 0v-1.5M12 19v3M8 22h8"/></svg>}</button><button type="submit" disabled={(!draft.trim() && !attachments.length) || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div></div>{liveVoice && <p className="voice-status" role="status">{voiceStatus} · Micro actif uniquement pendant l'écoute. <button type="button" onClick={stopLiveVoice}>Arrêter</button></p>}
               <p className="attachment-hint">Photos JPG, PNG, WebP · fichiers TXT, MD, CSV, JSON · 10 Mo maximum chacun</p>
             </form>
             <p className="disclaimer">Ne partage jamais de données personnelles ou confidentielles dans une conversation.</p>
+            {writingOpen && <div className="writing-overlay" role="dialog" aria-modal="true" aria-label="Espace d’écriture"><section className="writing-panel"><header className="writing-header"><div><strong>Espace d’écriture</strong><small>Modifie et mets en forme ton texte</small></div><button type="button" onClick={() => setWritingOpen(false)} aria-label="Fermer l’espace d’écriture">×</button></header><div className="writing-toolbar"><button type="button" onClick={() => formatWriting('bold')}><b>G</b></button><button type="button" onClick={() => formatWriting('italic')}><i>I</i></button><button type="button" onClick={() => formatWriting('underline')}><u>S</u></button><button type="button" onClick={() => formatWriting('hiliteColor','#fff29a')} title="Surligner">🖍</button><button type="button" onClick={() => formatWriting('insertParagraph')} title="Nouveau paragraphe">¶</button><select aria-label="Police" defaultValue="Arial" onChange={(e) => formatWriting('fontName',e.target.value)}><option value="Arial">Arial</option><option value="Georgia">Georgia</option><option value="Verdana">Verdana</option><option value="Times New Roman">Times New Roman</option><option value="Courier New">Courier New</option><option value="Trebuchet MS">Trebuchet MS</option></select><select aria-label="Taille du texte" defaultValue="3" onChange={(e) => formatWriting('fontSize',e.target.value)}><option value="2">Petit</option><option value="3">Normal</option><option value="4">Grand</option><option value="5">Très grand</option><option value="6">Titre</option></select></div><div ref={writingEditorRef} className="writing-editable" contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-placeholder="Écris ou colle ton texte ici…" /><footer className="writing-footer"><button type="button" onClick={copyWriting}>⧉ Copier le texte</button><button type="button" onClick={() => { setDraft(writingEditorRef.current?.innerText || ''); setWritingOpen(false); }}>Utiliser dans le message</button><button type="button" onClick={() => setWritingOpen(false)}>Terminer</button></footer></section></div>}
           </>
         )}
       </section>
