@@ -720,3 +720,30 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 :root[data-theme="light"] .auth-description,:root[data-theme="light"] .auth-form label,:root[data-theme="light"] .auth-switch{color:#5e526a}
 :root[data-theme="light"] .auth-form input{background:#fff;color:#241b30;border-color:#d8c4f2}
 @media(max-width:480px){.auth-card{padding:25px 20px;border-radius:18px}}
+
+
+/* Hiera writing space and cancellation controls */
+.message-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.copy-message{border:1px solid #7653a5;background:#211638;color:#e9dcff;border-radius:9px;padding:7px 10px;font-size:11px;cursor:pointer}
+.copy-message:hover{background:#392257;border-color:#b98aff}
+.stop-generation{border-color:#b85d78;color:#ffdbe4}
+.composer-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.writing-overlay{position:fixed;inset:0;z-index:30;background:#070412d9;display:grid;place-items:center;padding:18px}
+.writing-panel{width:min(900px,100%);max-height:min(88vh,850px);display:flex;flex-direction:column;background:#151027;border:1px solid #8054b7;border-radius:20px;box-shadow:0 24px 90px #0009;padding:18px;gap:13px}
+.writing-header{display:flex;align-items:center;justify-content:space-between;color:#f5edff}
+.writing-header div{display:flex;flex-direction:column;gap:4px}
+.writing-header small{font-size:11px;color:#b7a7d0}
+.writing-header>button{border:0;background:#ffffff12;color:#fff;border-radius:9px;font-size:23px;width:36px;height:36px;cursor:pointer}
+.writing-toolbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;border-bottom:1px solid #ffffff20;padding-bottom:12px}
+.writing-toolbar button,.writing-toolbar select{background:#251a3c;border:1px solid #725493;color:#f3eaff;border-radius:8px;padding:8px 10px;cursor:pointer}
+.writing-toolbar select{cursor:pointer}
+.writing-editable{min-height:260px;max-height:55vh;overflow:auto;padding:17px;background:#fff;color:#24202b;border-radius:12px;outline:2px solid transparent;line-height:1.7;font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere}
+.writing-editable:focus{outline-color:#a978e8}
+.writing-editable:empty:before{content:attr(data-placeholder);color:#89828f}
+.writing-footer{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.writing-footer button{border:1px solid #8157b7;background:#39205d;color:#fff;border-radius:10px;padding:10px 13px;cursor:pointer}
+.writing-footer button:last-child{background:#702fc0}
+:root[data-theme="light"] .writing-panel{background:#fff;color:#241b30}
+:root[data-theme="light"] .writing-header{color:#241b30}
+:root[data-theme="light"] .writing-toolbar button,:root[data-theme="light"] .writing-toolbar select{background:#f3eaff;color:#39244f}
+@media(max-width:600px){.writing-panel{padding:12px}.writing-editable{min-height:220px}.writing-footer button{flex:1}.composer-actions{gap:5px}.copy-message{padding:7px 8px}}
