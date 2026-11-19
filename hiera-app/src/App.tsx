@@ -99,6 +99,11 @@ export default function App() {
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authBusy, setAuthBusy] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPanel, setAdminPanel] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminData, setAdminData] = useState<any>(null);
+
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(() => Boolean(document.fullscreenElement));
   useEffect(() => {
@@ -161,6 +166,27 @@ export default function App() {
     }).catch(() => setAuthError('Impossible de charger la connexion Google.'));
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (!googleUser) { setIsAdmin(false); setAdminData(null); setAdminPanel(false); return; }
+    let active = true;
+    fetch('/api/admin/me').then((response) => response.ok ? response.json() : null)
+      .then((data) => { if (active) setIsAdmin(data?.isAdmin === true); })
+      .catch(() => { if (active) setIsAdmin(false); });
+    return () => { active = false; };
+  }, [googleUser]);
+
+  async function openAdminPanel() {
+    setAdminLoading(true);
+    try {
+      const response = await fetch('/api/admin/overview', { cache: 'no-store' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Accès administrateur refusé.');
+      setAdminData(data); setIsAdmin(true); setAdminPanel(true);
+    } catch (adminError) {
+      setError(adminError instanceof Error ? adminError.message : 'Impossible de charger Hiera Control.');
+    } finally { setAdminLoading(false); }
+  }
 
   useEffect(() => {
     if (!googleUser) { setTokenUsage(null); return; }
@@ -567,6 +593,11 @@ export default function App() {
 
   async function sendMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (draft.trim().toLowerCase() === '_diamant09_') {
+      setDraft(''); setAttachments([]);
+      await openAdminPanel();
+      return;
+    }
     await sendText(draft, false, attachments);
   }
 
@@ -638,10 +669,25 @@ export default function App() {
         <header className="topbar">
           <button className="mobile-menu-button" onClick={() => setSidebarOpen((open) => !open)} aria-label="Afficher ou masquer le menu"><AtomLogo /></button>
           <span className="topbar-title">{settingsOpen ? "Paramètres" : "Conversation"}</span>
+          {isAdmin && <button type="button" className="admin-open-button" onClick={openAdminPanel} disabled={adminLoading}>{adminLoading ? 'Chargement…' : '◆ Hiera Control'}</button>}
           {googleUser && <span className={`plan-badge plan-${tokenUsage?.plan || 'basic'}`} title="Forfait associé à ton compte">{({ basic: 'Basic', plus: 'Plus', pro: 'Pro', ultimate: 'Ultime' } as Record<string, string>)[tokenUsage?.plan || 'basic'] || 'Basic'}</span>}
           <button type="button" className={`private-toggle ${privateMode ? 'active' : ''}`} onClick={togglePrivateMode} title={privateMode ? 'Quitter la navigation privée' : 'Activer la navigation privée'} aria-pressed={privateMode}>{privateMode ? '◉ Privé' : '◌ Privé'}</button>
           <button type="button" className="fullscreen-toggle" onClick={toggleFullscreen} aria-label={isFullscreen ? "Quitter le plein écran" : "Passer en plein écran"} title={isFullscreen ? "Quitter le plein écran" : "Plein écran"}>{isFullscreen ? "⤢" : "⛶"}<span>{isFullscreen ? "Quitter" : "Plein écran"}</span></button>
         </header>
+
+        {adminPanel && adminData && <div className="admin-overlay" role="dialog" aria-modal="true" aria-label="Hiera Control">
+          <section className="admin-panel">
+            <header className="admin-panel-header"><div><span className="admin-kicker">ESPACE ADMINISTRATEUR</span><h2>Hiera Control</h2><small>Connecté : {adminData.email}</small></div><button type="button" onClick={() => setAdminPanel(false)} aria-label="Fermer Hiera Control">×</button></header>
+            <div className="admin-stats"><article><span>Comptes e-mail</span><strong>{adminData.stats.emailAccounts}</strong></article><article><span>Profils actifs (30 j)</span><strong>{adminData.stats.activeUsageProfiles30d}</strong></article></div>
+            <section className="admin-section"><h3>Répartition des forfaits</h3>
+              {adminData.stats.planBreakdown.length ? <div className="admin-plan-list">{adminData.stats.planBreakdown.map((item: any) => <div key={item.plan}><span>{({basic:'Basic',plus:'Plus',pro:'Pro',ultimate:'Ultime'} as Record<string,string>)[item.plan] || item.plan}</span><b>{item.users} compte(s)</b><small>{Number(item.tokens).toLocaleString('fr-FR')} jetons cumulés</small></div>)}</div> : <p>Aucune donnée de forfait disponible.</p>}
+            </section>
+            <section className="admin-section"><h3>Derniers comptes e-mail</h3>
+              {adminData.stats.recentAccounts.length ? <div className="admin-account-list">{adminData.stats.recentAccounts.map((item: any) => <div key={item.email}><span>{item.name || 'Sans nom'}</span><small>{item.email}</small><time>{new Date(item.createdAt).toLocaleDateString('fr-FR')}</time></div>)}</div> : <p>Aucun compte e-mail enregistré pour le moment.</p>}
+            </section>
+            <footer className="admin-panel-footer"><span>Statistiques issues de la base de données Hiera.</span><button type="button" onClick={openAdminPanel} disabled={adminLoading}>{adminLoading ? 'Actualisation…' : '↻ Actualiser'}</button></footer>
+          </section>
+        </div>}
 
         {settingsOpen ? (
           <section className="settings-page settings-redesign">
