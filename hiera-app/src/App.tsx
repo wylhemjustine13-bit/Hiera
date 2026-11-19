@@ -99,6 +99,21 @@ export default function App() {
   const [authPassword, setAuthPassword] = useState('');
   const [authBusy, setAuthBusy] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(() => Boolean(document.fullscreenElement));
+  useEffect(() => {
+    const syncFullscreen = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    return () => document.removeEventListener('fullscreenchange', syncFullscreen);
+  }, []);
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+      else setError('Le mode plein écran n’est pas pris en charge par ce navigateur.');
+    } catch {
+      setError('Le navigateur a refusé le mode plein écran. Essaie depuis Chrome ou installe Hiera sur l’écran d’accueil.');
+    }
+  }
   const [settingsPage, setSettingsPage] = useState('home');
   const [wellbeingSection, setWellbeingSection] = useState<'security' | 'privacy'>('security');
   const [sidebarOpen, setSidebarOpen] = useState(() => !window.matchMedia("(max-width: 760px)").matches);
@@ -600,6 +615,7 @@ export default function App() {
         <header className="topbar">
           <button className="mobile-menu-button" onClick={() => setSidebarOpen((open) => !open)} aria-label="Afficher ou masquer le menu"><AtomLogo /></button>
           <span className="topbar-title">{settingsOpen ? "Paramètres" : "Conversation"}</span>
+          <button type="button" className="fullscreen-toggle" onClick={toggleFullscreen} aria-label={isFullscreen ? "Quitter le plein écran" : "Passer en plein écran"} title={isFullscreen ? "Quitter le plein écran" : "Plein écran"}>{isFullscreen ? "⤢" : "⛶"}<span>{isFullscreen ? "Quitter" : "Plein écran"}</span></button>
         </header>
 
         {settingsOpen ? (
