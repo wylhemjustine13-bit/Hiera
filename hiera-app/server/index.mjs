@@ -396,20 +396,22 @@ const server = createServer(async (req, res) => {
       status TEXT NOT NULL DEFAULT 'pending', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       responded_at TIMESTAMPTZ, expires_at TIMESTAMPTZ NOT NULL, shared_messages JSONB,
       viewed_at TIMESTAMPTZ, closed_at TIMESTAMPTZ
+    )
     `);
     await pool.query(`CREATE TABLE IF NOT EXISTS hiera_safety_flags (
       id BIGSERIAL PRIMARY KEY, user_id TEXT NOT NULL, email TEXT NOT NULL,
       category TEXT NOT NULL, severity TEXT NOT NULL DEFAULT 'review',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), reviewed_at TIMESTAMPTZ
+    )
     `);
   }
 
   async function recordSafetySignal(user, message) {
     const text = String(message || '').slice(0, 12000).toLocaleLowerCase('fr');
     const checks = [
-      { category: 'menace_directe', patterns: [/\\bje vais (?:te|le|la|les) tuer\\b/i, /\\bje vais (?:te|le|la) frapper\\b/i, /\\bje vais lui faire du mal\\b/i] },
-      { category: 'harcelement_cible', patterns: [/\\bje vais (?:la|le|les) harceler\\b/i, /\\bje vais publier (?:son|sa|ses) (?:photos?|adresse|numero)\\b/i, /\\bje vais le/la faire chanter\\b/i] },
-      { category: 'donnees_sensibles', patterns: [/\\b(?:donne|envoie|obtiens) moi (?:ton|son) mot de passe\\b/i, /\\b(?:numero|code) de carte bancaire\\b/i] },
+      { category: 'menace_directe', patterns: [/\bje vais (?:te|le|la|les) tuer\b/i, /\bje vais (?:te|le|la) frapper\b/i, /\bje vais lui faire du mal\b/i] },
+      { category: 'harcelement_cible', patterns: [/\bje vais (?:la|le|les) harceler\b/i, /\bje vais publier (?:son|sa|ses) (?:photos?|adresse|numero)\b/i, /\bje vais le/la faire chanter\b/i] },
+      { category: 'donnees_sensibles', patterns: [/\b(?:donne|envoie|obtiens) moi (?:ton|son) mot de passe\b/i, /\b(?:numero|code) de carte bancaire\b/i] },
     ];
     const match = checks.find((check) => check.patterns.some((pattern) => pattern.test(text)));
     if (!match) return;
