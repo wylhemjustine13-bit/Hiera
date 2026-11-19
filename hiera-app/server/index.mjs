@@ -27,6 +27,7 @@ const GOOGLE_REDIRECT_URI = 'https://hiera.onrender.com/api/integrations/google/
 const INTEGRATION_ENCRYPTION_KEY = process.env.INTEGRATION_ENCRYPTION_KEY;
 const pool = process.env.DATABASE_URL ? new pg.Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false } }) : null;
 let integrationTableReady = false;
+let usageTableReady = false;
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const DIST_DIR = resolve(process.cwd(), 'dist');
@@ -170,6 +171,18 @@ const server = createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/auth/logout') {
     res.setHeader('Set-Cookie', 'hiera_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0');
     return send(res, 200, { ok: true });
+  }
+
+  async function ensureUsageTable() {
+    if (!pool) throw new Error('La base de données des quotas doit être configurée (DATABASE_URL).');
+    if (usageTableReady) return;
+    await pool.query(`CREATE TABLE IF NOT EXISTS hiera_usage (
+      user_id TEXT PRIMARY KEY,
+      plan TEXT NOT NULL DEFAULT 'basic',
+      period_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      message_count INTEGER NOT NULL DEFAULT 0
+    )`);
+    usageTableReady = true;
   }
 
   async function ensureIntegrationTable() {
@@ -417,6 +430,43 @@ const server = createServer(async (req, res) => {
         ? ''
         : 'Privilégie des explications claires, respectueuses et adaptées à un public adolescent.';
       const chatUser = readSession(req);
+      if (!chatUser) {
+        return send(res, 401, { error: 'Connecte-toi avec Google pour que Hiera puisse appliquer ton quota personnel.' });
+      }
+      try {
+        await ensureUsageTable();
+        const usage = await pool.query(
+          `INSERT INTO hiera_usage (user_id, plan, period_started_at, message_count)
+           VALUES ($1, 'basic', NOW(), 1)
+           ON CONFLICT (user_id) DO UPDATE SET
+             period_started_at = CASE
+               WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN NOW()
+               ELSE hiera_usage.period_started_at
+             END,
+             message_count = CASE
+               WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 1
+               ELSE hiera_usage.message_count + 1
+             END
+           WHERE CASE
+             WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 0
+             ELSE hiera_usage.message_count
+           END < 100
+           RETURNING message_count, period_started_at`,
+          [chatUser.sub],
+        );
+        if (!usage.rowCount) {
+          const current = await pool.query('SELECT period_started_at FROM hiera_usage WHERE user_id = $1', [chatUser.sub]);
+          return send(res, 429, {
+            error: 'Tu as atteint la limite de 100 messages de Hiera Basic. Ton quota sera renouvelé 24 heures après le début de ta période.',
+            resetAt: current.rows[0]?.period_started_at ? new Date(new Date(current.rows[0].period_started_at).getTime() + 24 * 60 * 60 * 1000).toISOString() : null,
+            plan: 'basic',
+            limit: 100,
+          });
+        }
+      } catch (quotaError) {
+        console.error('Hiera usage quota failed:', quotaError instanceof Error ? quotaError.message : 'unknown error');
+        return send(res, 503, { error: 'Impossible de vérifier ton quota. Vérifie la base de données de Hiera puis réessaie.' });
+      }
       const messages = [{
         role: 'system',
         content: `Tu es ${assistantName}, un assistant IA utile, honnête et bienveillant. Réponds toujours en ${responseLanguage}, sauf si l'utilisateur demande explicitement une autre langue. ${responseStyle} ${familyStyle} Utilise parfois un ou deux émojis pertinents pour rendre tes réponses expressives, mais reste naturel et n'en ajoute pas à chaque phrase. N'invente pas de capacités ou d'actions que tu n'as pas réalisées. Respecte les règles de sécurité et refuse les demandes dangereuses. Si l'outil Google Agenda est disponible, utilise-le pour répondre aux questions sur les rendez-vous. Ne prétends jamais avoir consulté l'agenda sans avoir réellement appelé l'outil. Pour toute création, modification ou suppression, demande d'abord une confirmation explicite et n'effectue aucune modification sans confirmation.`,
