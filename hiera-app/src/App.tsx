@@ -58,6 +58,8 @@ export default function App() {
   const [recoveryBusy, setRecoveryBusy] = useState(false);
   const [liveVoice, setLiveVoice] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState('Mode vocal désactivé');
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [voiceTestStatus, setVoiceTestStatus] = useState('');
   const recognitionRef = useRef<HieraSpeechRecognition | null>(null);
   const voiceHeartbeatRef = useRef<number | null>(null);
   const liveVoiceRef = useRef(false);
@@ -89,6 +91,13 @@ export default function App() {
   useEffect(() => { localStorage.setItem('hiera-conversations', JSON.stringify(conversations)); }, [conversations]);
   useEffect(() => { localStorage.setItem('hiera-settings', JSON.stringify(settingsValues)); document.documentElement.dataset.theme = settingsValues.theme || 'dark'; }, [settingsValues]);
   useEffect(() => { localStorage.setItem('hiera-model', model); }, [model]);
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) return;
+    const refreshVoices = () => setAvailableVoices(window.speechSynthesis.getVoices());
+    refreshVoices();
+    window.speechSynthesis.addEventListener('voiceschanged', refreshVoices);
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', refreshVoices);
+  }, []);
   useEffect(() => () => { if (voiceHeartbeatRef.current !== null) window.clearInterval(voiceHeartbeatRef.current); if (liveVoiceRef.current) void fetch('/api/voice/stop', { method: 'POST' }); }, []);
 
   useEffect(() => {
@@ -231,6 +240,42 @@ export default function App() {
     }
   }
 
+  function speakText(text: string, voiceKey: 'directVoice' | 'readVoice' = 'readVoice') {
+    if (!('speechSynthesis' in window)) {
+      setError("La lecture vocale n'est pas disponible sur ce navigateur.");
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = settingsValues.language || 'fr-FR';
+    const selectedUri = settingsValues[voiceKey];
+    const selectedVoice = availableVoices.find((voice) => voice.voiceURI === selectedUri);
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+      utterance.lang = selectedVoice.lang || utterance.lang;
+    } else {
+      const frenchVoice = availableVoices.find((voice) => voice.lang.toLowerCase().startsWith('fr'));
+      if (frenchVoice) {
+        utterance.voice = frenchVoice;
+        utterance.lang = frenchVoice.lang;
+      }
+    }
+    utterance.onstart = () => {
+      if (voiceKey === 'directVoice') setVoiceStatus('Hiera parle…');
+      else setVoiceTestStatus('Lecture en cours…');
+    };
+    utterance.onend = () => {
+      if (voiceKey === 'directVoice') {
+        if (liveVoiceRef.current) startVoiceListening();
+        else setVoiceStatus('Réponse vocale terminée');
+      } else setVoiceTestStatus('Lecture terminée');
+    };
+    utterance.onerror = () => {
+      if (voiceKey === 'readVoice') setVoiceTestStatus('Lecture indisponible');
+    };
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  }
+
   function startVoiceListening() {
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition) { setError("La reconnaissance vocale n'est pas prise en charge par ce navigateur. Essaie Chrome."); setLiveVoice(false); liveVoiceRef.current=false; return; }
@@ -369,15 +414,7 @@ export default function App() {
       setMessages(updated);
       persistConversation(updated);
       if (fromVoice || liveVoiceRef.current) {
-        const utterance = new SpeechSynthesisUtterance(data.reply);
-        utterance.lang = settingsValues.language || 'fr-FR';
-        utterance.onstart = () => setVoiceStatus('Hiera parle…');
-        utterance.onend = () => {
-          if (liveVoiceRef.current) startVoiceListening();
-          else setVoiceStatus('Réponse vocale terminée');
-        };
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(utterance);
+        speakText(data.reply, 'directVoice');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de joindre Hiera.');
@@ -549,7 +586,29 @@ export default function App() {
             </div>}
             {settingsPage === 'theme' && <div className="settings-detail"><div className="settings-feature-card"><strong>Apparence</strong><p>Choisis l'apparence de Hiera.</p><select className="settings-select" value={settingsValues.theme || 'dark'} onChange={(e) => updateSetting('theme',e.target.value)}><option value="dark">Sombre violet</option><option value="light">Clair</option></select></div></div>}
             {settingsPage === 'notifications' && <div className="settings-detail"><div className="settings-feature-card"><strong>Notifications du navigateur</strong><p>Autorise ou bloque les notifications de Hiera dans ton navigateur.</p><span className="settings-static-value">État : {typeof Notification === 'undefined' ? 'Non pris en charge' : Notification.permission}</span><button className="settings-primary-button" onClick={async () => { if (typeof Notification === 'undefined') { updateSetting('notificationPermission','unsupported'); return; } const permission = Notification.permission === 'default' ? await Notification.requestPermission() : Notification.permission; updateSetting('notificationPermission',permission); if (permission === 'granted') new Notification('Hiera',{body:'Les notifications du navigateur sont activées.'}); }}>Activer et tester</button></div></div>}
-            {settingsPage === 'voice' && <div className="settings-detail"><div className="settings-feature-card"><strong>Lecture vocale</strong><p>Teste la synthèse vocale disponible dans ton navigateur.</p><button className="settings-primary-button" onClick={() => { if ('speechSynthesis' in window) { const utterance = new SpeechSynthesisUtterance('Bonjour, je suis Hiera.'); utterance.lang='fr-FR'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(utterance); } }}>Tester la voix</button><button className="settings-text-link" onClick={() => window.speechSynthesis?.cancel()}>Arrêter la lecture</button></div></div>}
+            {settingsPage === 'voice' && <div className="settings-detail">
+              <div className="settings-feature-card">
+                <strong>Voix du mode direct</strong>
+                <p>Cette voix sera utilisée lorsque Hiera te répond pendant une conversation vocale.</p>
+                <select className="settings-select" value={settingsValues.directVoice || ''} onChange={(e) => updateSetting('directVoice', e.target.value)}>
+                  <option value="">Voix française automatique</option>
+                  {availableVoices.map((voice) => <option key={voice.voiceURI} value={voice.voiceURI}>{voice.name} — {voice.lang}{voice.default ? ' · par défaut' : ''}</option>)}
+                </select>
+                <button className="settings-primary-button" onClick={() => speakText('Bonjour, je suis Hiera. Comment puis-je t’aider ?', 'directVoice')}>Tester cette voix</button>
+              </div>
+              <div className="settings-feature-card">
+                <strong>Voix pour lire les réponses</strong>
+                <p>Choisis une voix indépendante pour le bouton « Lire à haute voix » sous les réponses.</p>
+                <select className="settings-select" value={settingsValues.readVoice || ''} onChange={(e) => updateSetting('readVoice', e.target.value)}>
+                  <option value="">Voix française automatique</option>
+                  {availableVoices.map((voice) => <option key={voice.voiceURI} value={voice.voiceURI}>{voice.name} — {voice.lang}{voice.default ? ' · par défaut' : ''}</option>)}
+                </select>
+                <button className="settings-primary-button" onClick={() => speakText('Bonjour, je suis Hiera. Voici un exemple de lecture à haute voix.', 'readVoice')}>Tester cette voix</button>
+                <button className="settings-text-link" onClick={() => { window.speechSynthesis?.cancel(); setVoiceTestStatus('Lecture arrêtée'); }}>Arrêter la lecture</button>
+                {voiceTestStatus && <small>{voiceTestStatus}</small>}
+              </div>
+              <p className="settings-description">{availableVoices.length ? availableVoices.length + ' voix disponibles sur cet appareil. La liste dépend du navigateur et des voix installées.' : 'Chargement des voix… Si aucune voix ne s’affiche, vérifie les voix installées dans les paramètres Android ou du navigateur.'}</p>
+            </div>}
             {settingsPage === 'personalization' && <div className="settings-detail"><div className="settings-feature-card"><strong>Nom de l'assistant</strong><input className="settings-select" maxLength={40} value={settingsValues.assistantName || 'Hiera'} onChange={(e) => updateSetting('assistantName',e.target.value)} /><p>Le nom choisi est transmis au modèle pour les prochaines réponses.</p></div><div className="settings-feature-card"><strong>Style de réponse</strong><select className="settings-select" value={settingsValues.replyStyle || 'friendly'} onChange={(e) => updateSetting('replyStyle',e.target.value)}><option value="friendly">Naturel et amical</option><option value="concise">Concis</option><option value="detailed">Détaillé</option></select><p>Le style choisi s'applique aux prochaines réponses.</p></div></div>}
             {settingsPage === 'companion' && <div className="settings-detail"><div className="settings-feature-card"><strong>Compagnon Hiera</strong><p>Le robot animé et ses animations ne sont pas encore intégrés à cette version. Cette rubrique restera informative jusqu'à ce que ces fonctions soient disponibles, plutôt que de proposer un interrupteur sans effet.</p></div></div>}
 
@@ -581,7 +640,7 @@ export default function App() {
                     {message.role === 'assistant' && <span className="message-mark">✳</span>}
                     <div className="message-body">
                       <p>{message.content}</p>
-                      {message.role === 'assistant' && <button className="copy-message" type="button" onClick={() => copyMessage(message.content, index)} aria-label="Copier la réponse" title="Copier la réponse">{copiedMessageIndex === index ? '✓ Copié' : '⧉ Copier'}</button>}
+                      {message.role === 'assistant' && <div className="message-actions"><button className="copy-message" type="button" onClick={() => copyMessage(message.content, index)} aria-label="Copier la réponse" title="Copier la réponse">{copiedMessageIndex === index ? '✓ Copié' : '⧉ Copier'}</button><button className="copy-message" type="button" onClick={() => speakText(message.content, 'readVoice')} aria-label="Lire la réponse à haute voix" title="Lire à haute voix">♫ Lire</button></div>}
                       {message.role === 'assistant' && typeof message.tokensUsed === 'number' && <small className="token-usage-note">≈ {message.tokensUsed.toLocaleString('fr-FR')} jetons utilisés pour cet échange</small>}
                     </div>
                   </article>
