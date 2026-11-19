@@ -105,6 +105,9 @@ export default function App() {
   const [adminPanel, setAdminPanel] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminData, setAdminData] = useState<any>(null);
+  const [pendingHelpRequest, setPendingHelpRequest] = useState<any>(null);
+  const [helpConsentBusy, setHelpConsentBusy] = useState(false);
+  const [sharedHelp, setSharedHelp] = useState<any>(null);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(() => Boolean(document.fullscreenElement));
@@ -189,6 +192,25 @@ export default function App() {
   }
 
   useEffect(() => {
+    if (!googleUser) { setPendingHelpRequest(null); return; }
+    let active = true;
+    const pollHelpRequest = async () => {
+      try {
+        const response = await fetch('/api/help/pending', { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (active) setPendingHelpRequest((current: any) => {
+          if (!data.request) return null;
+          return current?.id === data.request.id ? current : data.request;
+        });
+      } catch { /* Nouvelle tentative automatique. */ }
+    };
+    void pollHelpRequest();
+    const timer = window.setInterval(pollHelpRequest, 2000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [googleUser?.email]);
+
+  useEffect(() => {
     if (!adminPanel || !isAdmin) return;
     let active = true;
     let firstPoll = true;
@@ -220,7 +242,7 @@ export default function App() {
   }, [adminPanel, isAdmin]);
 
   useEffect(() => {
-    if (!googleUser) { setTokenUsage(null); return; }
+    if (!googleUser) { setTokenUsage(null); setPendingHelpRequest(null); return; }
     let active = true;
     fetch('/api/usage')
       .then(async (response) => {
@@ -344,6 +366,63 @@ export default function App() {
       if (!response.ok) throw new Error(data.error || 'Impossible de traiter la demande.');
       await refreshAdminData();
     } catch (err) { setAdminActionStatus(err instanceof Error ? err.message : 'Impossible de traiter la demande.'); }
+  }
+
+  async function requestHelpAccess(userId: string) {
+    setAdminActionStatus('');
+    try {
+      const response = await fetch('/api/admin/help/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Impossible de demander l’autorisation.');
+      setAdminActionStatus(data.existing ? 'Une demande est déjà en attente.' : 'Demande envoyée. L’utilisateur doit donner son accord.');
+      await refreshAdminData();
+    } catch (err) { setAdminActionStatus(err instanceof Error ? err.message : 'Demande impossible.'); }
+  }
+
+  async function openSharedHelp(id: number) {
+    try {
+      const response = await fetch('/api/admin/help/view', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Accès non autorisé ou déjà utilisé.');
+      setSharedHelp({ id, email: data.email, messages: data.messages || [], expiresAt: data.expiresAt });
+    } catch (err) { setAdminActionStatus(err instanceof Error ? err.message : 'Impossible d’ouvrir la session d’aide.'); }
+  }
+
+  async function closeSharedHelp() {
+    if (!sharedHelp) return;
+    try {
+      const response = await fetch('/api/admin/help/close', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: sharedHelp.id }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Impossible de fermer la session.');
+      setSharedHelp(null); await refreshAdminData();
+    } catch (err) { setAdminActionStatus(err instanceof Error ? err.message : 'Impossible de fermer la session.'); }
+  }
+
+  async function reviewSafetyFlag(id: number) {
+    try {
+      const response = await fetch('/api/admin/safety/review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Impossible de traiter le signalement.');
+      await refreshAdminData();
+    } catch (err) { setAdminActionStatus(err instanceof Error ? err.message : 'Impossible de traiter le signalement.'); }
+  }
+
+  async function respondToHelpRequest(approved: boolean) {
+    if (!pendingHelpRequest) return;
+    setHelpConsentBusy(true);
+    try {
+      const response = await fetch('/api/help/respond', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: pendingHelpRequest.id, approved,
+          messages: approved && !privateMode ? messagesRef.current.slice(-30).map(({ role, content }) => ({ role, content })) : [],
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Impossible d’envoyer ta réponse.');
+      setPendingHelpRequest(null);
+    } catch (err) { setAuthError(err instanceof Error ? err.message : 'Impossible d’envoyer ta réponse.'); }
+    finally { setHelpConsentBusy(false); }
   }
 
   async function enableAdminNotifications() {
@@ -757,13 +836,17 @@ export default function App() {
             <div className="admin-tools-row"><span>Actualisation silencieuse : 1 seconde</span><button type="button" onClick={enableAdminNotifications}>{adminNotificationsEnabled ? '✓ Notifications activées' : 'Activer les notifications'}</button></div>
             {adminActionStatus && <p className="admin-action-status" role="status">{adminActionStatus}</p>}
             <section className="admin-section"><h3>Comptes Hiera</h3><div className="admin-user-list">
-              {(adminData.users || []).map((item: any) => <article className="admin-user-row" key={item.userId}>
-                <div className="admin-user-identity"><strong>{item.name || 'Sans nom'}</strong><small>{item.email}</small><time>Activité : {item.lastSeenAt ? new Date(item.lastSeenAt).toLocaleString('fr-FR') : 'Non disponible'}</time></div>
+              {(adminData.users || []).map((item: any) => <article className={item.safetyFlagCount > 0 ? 'admin-user-row admin-user-alert' : 'admin-user-row'} key={item.userId}>
+                <div className="admin-user-identity"><strong>{item.name || 'Sans nom'} {item.safetyFlagCount > 0 && <span className="admin-alert-pill">À vérifier · {item.safetyFlagCount}</span>}</strong><small>{item.email}</small><time>Activité : {item.lastSeenAt ? new Date(item.lastSeenAt).toLocaleString('fr-FR') : 'Non disponible'}</time></div>
                 <div className="admin-user-controls"><select aria-label={'Forfait de ' + item.email} value={item.plan || 'basic'} onChange={(event) => updateAdminAccount(item.userId, { plan: event.target.value })}><option value="basic">Basic</option><option value="plus">Plus</option><option value="pro">Pro</option><option value="ultimate">Ultime</option></select>
+                  <button type="button" className="admin-help-button" onClick={() => item.helpStatus === 'approved' ? openSharedHelp(Number(item.helpRequestId)) : requestHelpAccess(item.userId)} disabled={item.helpStatus === 'pending'}>{item.helpStatus === 'pending' ? 'Demande envoyée' : item.helpStatus === 'approved' ? 'Voir l’aide' : 'Aide'}</button>
                   <button type="button" className={item.banned ? 'admin-reactivate' : 'admin-ban'} onClick={() => updateAdminAccount(item.userId, { banned: !item.banned })}>{item.banned ? 'Réactiver' : 'Suspendre'}</button><span className={item.banned ? 'admin-status-banned' : 'admin-status-active'}>{item.banned ? 'Suspendu' : 'Actif'}</span></div>
               </article>)}
               {!(adminData.users || []).length && <p>Aucun compte enregistré pour le moment.</p>}
             </div></section>
+            <section className="admin-section"><h3>Alertes de sécurité à vérifier</h3>
+              {(adminData.safetyFlags || []).length ? <div className="admin-reset-list">{adminData.safetyFlags.map((item: any) => <article key={item.id}><div><strong>{item.email}</strong><time>{({menace_directe:'Menace directe',harcelement_cible:'Harcèlement ciblé',donnees_sensibles:'Demande de données sensibles'} as Record<string,string>)[item.category] || 'Signal à vérifier'} · {new Date(item.createdAt).toLocaleString('fr-FR')}</time><small>Hiera n’a conservé ni le message ni la conversation. Vérifie le contexte avant toute décision.</small></div><button type="button" onClick={() => reviewSafetyFlag(Number(item.id))}>Marquer vérifié</button></article>)}</div> : <p>Aucune alerte en attente.</p>}
+            </section>
             <section className="admin-section"><h3>Demandes « mot de passe oublié »</h3>
               {(adminData.resetRequests || []).length ? <div className="admin-reset-list">{adminData.resetRequests.map((item: any) => <article key={item.id}><div><strong>{item.email}</strong><time>{new Date(item.requested_at).toLocaleString('fr-FR')}</time></div><button type="button" onClick={() => resolveResetRequest(Number(item.id))}>Marquer comme traitée</button></article>)}</div> : <p>Aucune demande en attente.</p>}
             </section>
@@ -772,6 +855,8 @@ export default function App() {
           </section>
         </div>}
 
+        {pendingHelpRequest && <div className="help-consent-overlay" role="dialog" aria-modal="true" aria-label="Demande d’aide Hiera"><section className="help-consent-card"><span className="admin-kicker">DEMANDE D’AIDE</span><h2>Un administrateur souhaite t’aider</h2><p>Autorises-tu une consultation unique de ton adresse e-mail et des 30 derniers messages visibles de cette conversation ? Les pièces jointes et les autres conversations ne seront pas partagées.</p><p className="help-consent-expiry">Cette demande expire automatiquement. Tu peux refuser sans conséquence sur ton compte.</p><div><button type="button" className="admin-reactivate" disabled={helpConsentBusy} onClick={() => void respondToHelpRequest(false)}>Refuser</button><button type="button" className="admin-help-button" disabled={helpConsentBusy} onClick={() => void respondToHelpRequest(true)}>{helpConsentBusy ? 'Envoi…' : 'Autoriser une fois'}</button></div></section></div>}
+        {sharedHelp && <div className="help-consent-overlay" role="dialog" aria-modal="true" aria-label="Session d’aide autorisée"><section className="help-consent-card shared-help-card"><span className="admin-kicker">ACCÈS AUTORISÉ UNE FOIS</span><h2>Session d’aide · {sharedHelp.email}</h2><p>Seule la conversation choisie par l’utilisateur est visible. Ferme la session après consultation.</p><div className="shared-help-messages">{sharedHelp.messages.map((item: any, index: number) => <article key={index}><b>{item.role === 'user' ? 'Utilisateur' : 'Hiera'}</b><p>{item.content}</p></article>)}</div><button type="button" className="admin-ban" onClick={() => void closeSharedHelp()}>Fermer et supprimer l’accès</button></section></div>}
         {settingsOpen ? (
           <section className="settings-page settings-redesign">
             {settingsPage !== 'home' && <button className="settings-back" onClick={() => setSettingsPage('home')}>← Retour aux paramètres</button>}
