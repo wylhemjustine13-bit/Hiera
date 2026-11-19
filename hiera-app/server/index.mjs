@@ -561,7 +561,7 @@ const server = createServer(async (req, res) => {
             model,
             messages: chatMessages,
             ...(includeTools && calendarTools ? { tools: calendarTools, tool_choice: asksCalendar ? 'required' : 'auto' } : {}),
-            max_completion_tokens: 1200,
+            max_completion_tokens: model === 'qwen/qwen3.8-27b' ? 800 : 1200,
           }),
         });
         const data = await response.json().catch(() => ({}));
