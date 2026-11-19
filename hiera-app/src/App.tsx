@@ -293,7 +293,17 @@ export default function App() {
               </>}
             </div>}
             {settingsPage === 'usage' && <div className="settings-detail"><div className="settings-feature-card"><strong>Utilisation locale</strong><p>{conversations.length} conversation(s) enregistrée(s) sur cet appareil.</p><p>{conversations.reduce((n,c) => n+c.messages.length,0)} messages conservés dans l'historique local.</p></div></div>}
-            {settingsPage === 'billing' && <div className="settings-detail"><div className="settings-feature-card"><strong>Facturation</strong><p>Hiera n'a pas encore de système d'achat ou d'abonnement intégré. Aucun paiement n'est géré depuis cette page.</p></div></div>}
+            {settingsPage === 'billing' && <div className="settings-detail billing-detail">
+              <p className="settings-description">Choisis le niveau de Hiera qui correspond à tes besoins. Les caractéristiques ci-dessous présentent les offres prévues.</p>
+              <div className="billing-status"><span className="billing-status-dot" /><div><strong>Abonnements en préparation</strong><small>Aucun forfait n'est actuellement souscrit et aucun paiement n'est activé.</small></div></div>
+              <div className="billing-plans">
+                <article className="billing-plan"><div className="billing-plan-top"><span className="billing-plan-icon">✦</span><span className="billing-plan-label">Essentiel</span></div><h2>Hiera Basic</h2><p className="billing-plan-summary">Pour les conversations du quotidien.</p><ul><li>Chat avec Hiera</li><li>Historique des conversations</li><li>Fonctions essentielles</li><li>Limites d'utilisation standard</li></ul><span className="billing-price">Prix à définir</span></article>
+                <article className="billing-plan"><div className="billing-plan-top"><span className="billing-plan-icon">✧</span><span className="billing-plan-label">Plus</span></div><h2>Hiera Plus</h2><p className="billing-plan-summary">Pour une utilisation plus régulière.</p><ul><li>Tout ce qui est inclus dans Basic</li><li>Limites de messages plus élevées</li><li>Davantage de mémoire de conversation</li><li>Personnalisation supplémentaire</li></ul><span className="billing-price">Prix à définir</span></article>
+                <article className="billing-plan billing-plan-featured"><div className="billing-plan-top"><span className="billing-plan-icon">◈</span><span className="billing-plan-label">Avancé</span></div><h2>Hiera Pro</h2><p className="billing-plan-summary">Pour profiter de capacités avancées.</p><ul><li>Tout ce qui est inclus dans Plus</li><li>Mémoire avancée</li><li>Outils supplémentaires, selon disponibilité</li><li>Options de personnalisation avancées</li></ul><span className="billing-price">Prix à définir</span></article>
+                <article className="billing-plan"><div className="billing-plan-top"><span className="billing-plan-icon">✺</span><span className="billing-plan-label">Complet</span></div><h2>Hiera Ultimate</h2><p className="billing-plan-summary">L'offre la plus complète de Hiera.</p><ul><li>Tout ce qui est inclus dans Pro</li><li>Accès aux fonctionnalités premium</li><li>Priorité sur les nouvelles fonctions compatibles</li><li>Personnalisation maximale</li></ul><span className="billing-price">Prix à définir</span></article>
+              </div>
+              <p className="billing-footnote">Les fonctionnalités et les limites exactes seront précisées avant l'ouverture des abonnements. Aucun achat ne peut être effectué depuis cette page pour le moment.</p>
+            </div>}
             {settingsPage === 'general' && <div className="settings-detail">
               <div className="settings-feature-card">
                 <strong>Langue des réponses</strong>
