@@ -413,6 +413,7 @@ const server = createServer(async (req, res) => {
       { category: 'menace_directe', patterns: [/\bje vais (?:te|le|la|les) tuer\b/i, /\bje vais (?:te|le|la) frapper\b/i, /\bje vais lui faire du mal\b/i] },
       { category: 'harcelement_cible', patterns: [/\bje vais (?:la|le|les) harceler\b/i, /\bje vais publier (?:son|sa|ses) (?:photos?|adresse|numero)\b/i, /\bje vais (?:le|la) faire chanter\b/i] },
       { category: 'donnees_sensibles', patterns: [/\b(?:donne|envoie|obtiens) moi (?:ton|son) mot de passe\b/i, /\b(?:numero|code) de carte bancaire\b/i] },
+      { category: 'menace_cyber', patterns: [/\b(?:je vais|je veux|je compte|on va|nous allons|menace de)\b.{0,100}\b(?:hacker|pirater|attaquer|bloquer|faire tomber|prendre le controle)\b.{0,100}\b(?:banque|compte bancaire|serveur|systeme informatique|reseau|site web)\b/i, /\b(?:banque|compte bancaire|serveur|systeme informatique|reseau|site web)\b.{0,100}\b(?:hacker|pirater|attaquer|bloquer|faire tomber)\b/i] },
     ];
     const match = checks.find((check) => check.patterns.some((pattern) => pattern.test(text)));
     if (!match) return;
