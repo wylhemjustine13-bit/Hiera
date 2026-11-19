@@ -511,7 +511,9 @@ const server = createServer(async (req, res) => {
            ON CONFLICT (user_id) DO UPDATE SET
              period_started_at = CASE WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN NOW() ELSE hiera_usage.period_started_at END,
              message_count = CASE WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 1 ELSE hiera_usage.message_count + 1 END,
-             token_count = CASE WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 0 ELSE hiera_usage.token_count END
+             token_count = CASE WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 0 ELSE hiera_usage.token_count END,
+             voice_seconds = CASE WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 0 ELSE hiera_usage.voice_seconds END,
+             voice_last_ping_at = CASE WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN NULL ELSE hiera_usage.voice_last_ping_at END
            WHERE
              (CASE WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 0 ELSE hiera_usage.message_count END) <
                CASE hiera_usage.plan WHEN 'plus' THEN 300 WHEN 'pro' THEN 1200 WHEN 'ultimate' THEN 3000 ELSE 100 END
