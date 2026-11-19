@@ -33,6 +33,11 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 :root[data-theme="light"] .sidebar-account{background:#f4edff;border-color:#d8c4f2;color:#39244f}
 :root[data-theme="light"] .account-provider{color:#655575}
 .workspace{min-height:100vh;display:flex;flex-direction:column;width:100%;margin:auto;padding:0 40px 25px;position:relative}
+
+.fullscreen-toggle{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;border:1px solid #ffffff24;border-radius:12px;background:#ffffff0b;color:inherit;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap;transition:background .2s,border-color .2s}
+.fullscreen-toggle:hover{background:#a77bdb22;border-color:#b58be8}
+:root[data-theme="light"] .fullscreen-toggle{border-color:#241b3022;background:#241b3008}
+@media(max-width:650px){.fullscreen-toggle{margin-left:auto;padding:8px 9px;font-size:11px;gap:5px}.fullscreen-toggle span{display:none}}
 .topbar{height:76px;flex:none;display:flex;align-items:center;justify-content:flex-end;border-bottom:1px solid #ffffff14;gap:13px}
 .model-pill{font-size:11px;color:#c7b9df;border:1px solid #ffffff24;border-radius:30px;padding:8px 12px;display:flex;align-items:center;gap:8px}
 .avatar{width:39px;height:39px;border-radius:50%;border:1px solid #a36cff;background:linear-gradient(140deg,#873cff,#4b13bb);color:#fff;font-weight:700;box-shadow:0 0 20px #853dff55}
