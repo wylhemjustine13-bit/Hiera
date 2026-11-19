@@ -592,3 +592,34 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 :root[data-theme="light"] .message.assistant p{color:#39244f}
 :root[data-theme="light"] .copy-message{color:#654b7c;border-color:#bda7d7;background:#fff}
 @media(prefers-reduced-motion:reduce){.workspace::before,.workspace::after{animation:none}}
+
+
+/* Hiera subscription plan catalogue */
+.billing-detail{max-width:900px}
+.billing-status{display:flex;align-items:center;gap:11px;padding:13px 15px;border:1px solid #8c70b533;border-radius:12px;background:#ffffff08}
+.billing-status-dot{width:9px;height:9px;flex:none;border-radius:50%;background:#c49a55;box-shadow:0 0 0 4px #c49a551c}
+.billing-status strong,.billing-status small{display:block}
+.billing-status strong{font-size:12px;color:#f0e8ff}
+.billing-status small{margin-top:3px;font-size:10px;line-height:1.45;color:#b9accb}
+.billing-plans{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.billing-plan{display:flex;flex-direction:column;gap:9px;min-width:0;padding:16px;border:1px solid #7651a344;border-radius:14px;background:linear-gradient(145deg,#21143a99,#100b20cc)}
+.billing-plan-featured{border-color:#a77be0;box-shadow:0 0 0 1px #a77be022,0 10px 30px #0002}
+.billing-plan-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.billing-plan-icon{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:#8d5bc522;color:#d5b5ff;font-size:17px}
+.billing-plan-label{font-size:9px;letter-spacing:.8px;text-transform:uppercase;color:#c2a8e5}
+.billing-plan h2{margin:0;color:#f5edff;font-size:20px;letter-spacing:-.4px}
+.billing-plan-summary{margin:0;color:#b9accb;font-size:11px;line-height:1.45}
+.billing-plan ul{display:flex;flex-direction:column;gap:7px;margin:3px 0 5px;padding:0;list-style:none}
+.billing-plan li{position:relative;padding-left:17px;color:#ded4ed;font-size:10px;line-height:1.45}
+.billing-plan li:before{content:"✓";position:absolute;left:0;color:#b994ed}
+.billing-price{margin-top:auto;padding-top:8px;border-top:1px solid #ffffff13;color:#e6d6ff;font-size:11px;font-weight:650}
+.billing-footnote{margin:0;color:#a99ab9;font-size:10px;line-height:1.55}
+:root[data-theme="light"] .billing-status{background:#fff;border-color:#e0d0f2}
+:root[data-theme="light"] .billing-status strong{color:#39244f}
+:root[data-theme="light"] .billing-status small{color:#6d6078}
+:root[data-theme="light"] .billing-plan{background:linear-gradient(145deg,#fff,#f8f3ff);border-color:#e0d0f2}
+:root[data-theme="light"] .billing-plan h2{color:#39244f}
+:root[data-theme="light"] .billing-plan-summary,:root[data-theme="light"] .billing-plan li{color:#5e526a}
+:root[data-theme="light"] .billing-price{color:#563875;border-color:#e8def1}
+:root[data-theme="light"] .billing-footnote{color:#756982}
+@media(max-width:520px){.billing-plans{grid-template-columns:1fr}.billing-plan{padding:15px}.billing-plan h2{font-size:19px}}
