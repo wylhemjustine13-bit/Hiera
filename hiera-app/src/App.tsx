@@ -259,9 +259,7 @@ export default function App() {
   function stopGeneration() {
     chatAbortRef.current?.abort();
     chatAbortRef.current = null;
-    busyRef.current = false;
-    setBusy(false);
-    setError('Recherche arrêtée. Tu peux envoyer un nouveau message.');
+    setError('Arrêt de la recherche en cours…');
   }
 
   function openWritingEditor(content = '') {
