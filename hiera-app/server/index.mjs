@@ -613,7 +613,11 @@ const server = createServer(async (req, res) => {
         },
       }];
 
+      let requestTokensUsed = 0;
       async function askGroq(chatMessages, includeTools = true) {
+        const estimatedInputTokens = Math.ceil(JSON.stringify(chatMessages).length / 3);
+        const remainingForResponse = tokenBudget - tokensAlreadyUsed - requestTokensUsed - estimatedInputTokens;
+        if (remainingForResponse < 1) throw Object.assign(new Error('Le budget de jetons restant est insuffisant pour cette demande.'), { status: 429 });
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -624,7 +628,7 @@ const server = createServer(async (req, res) => {
             model,
             messages: chatMessages,
             ...(includeTools && calendarTools ? { tools: calendarTools, tool_choice: asksCalendar ? 'required' : 'auto' } : {}),
-            max_completion_tokens: model === 'qwen/qwen3.8-27b' ? 800 : 1200,
+            max_completion_tokens: Math.max(1, Math.min(model === 'qwen/qwen3.8-27b' ? 800 : 1200, remainingForResponse)),
           }),
         });
         const data = await response.json().catch(() => ({}));
@@ -643,6 +647,7 @@ const server = createServer(async (req, res) => {
       let assistantMessage = firstCompletion.message;
       let totalPromptTokens = Number(firstCompletion.usage.prompt_tokens || 0);
       let totalCompletionTokens = Number(firstCompletion.usage.completion_tokens || 0);
+      requestTokensUsed = totalPromptTokens + totalCompletionTokens;
       if (Array.isArray(assistantMessage?.tool_calls) && assistantMessage.tool_calls.length) {
         messages.push(assistantMessage);
         for (const toolCall of assistantMessage.tool_calls.slice(0, 2)) {
@@ -680,6 +685,7 @@ const server = createServer(async (req, res) => {
         assistantMessage = finalCompletion.message;
         totalPromptTokens += Number(finalCompletion.usage.prompt_tokens || 0);
         totalCompletionTokens += Number(finalCompletion.usage.completion_tokens || 0);
+        requestTokensUsed = totalPromptTokens + totalCompletionTokens;
       }
 
       const reply = assistantMessage?.content;
