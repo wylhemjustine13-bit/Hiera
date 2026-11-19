@@ -430,36 +430,33 @@ const server = createServer(async (req, res) => {
       const latestUserMessage = [...body.messages].reverse().find((message) => message?.role === 'user' && typeof message.content === 'string')?.content || '';
       const asksCalendar = /agenda|calendrier|rendez[- ]?vous|événements?|planning|mon emploi du temps|mes horaires/i.test(latestUserMessage);
 
-      // Lecture directe de Google Agenda : ne dépend pas de la décision d'appel d'outil du modèle.
+      // Réponse déterministe pour les questions d'agenda : le modèle ne peut pas ignorer les données.
       if (asksCalendar) {
         if (!chatUser) {
           return send(res, 401, { error: 'Reconnecte-toi à ton compte Google dans les paramètres de Hiera pour consulter ton agenda.' });
         }
         try {
-          const days = /semaine|7 jours/i.test(latestUserMessage) ? 7 : /mois|30 jours/i.test(latestUserMessage) ? 30 : 30;
+          const days = /semaine|7 jours/i.test(latestUserMessage) ? 7 : 30;
           const timeMin = new Date().toISOString();
           const timeMax = new Date(Date.now() + days * 86400000).toISOString();
           const params = new URLSearchParams({ timeMin, timeMax, singleEvents: 'true', orderBy: 'startTime', maxResults: '50' });
           const calendarData = await calendarRequest(chatUser.sub, `calendars/primary/events?${params}`);
-          const events = (calendarData.items || []).map((event) => ({
-            title: event.summary || 'Sans titre',
-            start: event.start?.dateTime || event.start?.date || '',
-            end: event.end?.dateTime || event.end?.date || '',
-            location: event.location || '',
-          }));
-          messages.splice(1, 0, {
-            role: 'system',
-            content: `Données réellement récupérées depuis Google Agenda pour les ${days} prochains jours (heure ISO): ${JSON.stringify(events)}. Nombre de rendez-vous: ${events.length}. Réponds à l'utilisateur en utilisant ces données. Si la liste est vide, dis clairement qu'aucun rendez-vous n'a été trouvé sur cette période. N'invente aucun événement.`,
+          const events = (calendarData.items || []).filter((event) => event.status !== 'cancelled');
+          const lines = events.map((event) => {
+            const when = event.start?.dateTime || event.start?.date || 'Date non précisée';
+            const where = event.location ? ` — ${event.location}` : '';
+            return `• ${event.summary || 'Sans titre'} — ${when}${where}`;
           });
+          const reply = events.length
+            ? `Voici tes ${events.length} prochain(s) rendez-vous dans les ${days} prochains jours :\\n\\n${lines.join('\\n')}`
+            : `J’ai consulté ton Google Agenda : aucun rendez-vous trouvé dans les ${days} prochains jours.`;
+          return send(res, 200, { reply });
         } catch (error) {
-          messages.splice(1, 0, {
-            role: 'system',
-            content: `La tentative réelle de lecture de Google Agenda a échoué: ${error instanceof Error ? error.message : 'erreur inconnue'}. Explique honnêtement que l'agenda n'a pas pu être consulté et n'affirme pas que l'utilisateur doit activer l'API sans preuve.`,
-          });
+          console.error('Google Calendar chat read failed:', error instanceof Error ? error.message : 'unknown error');
+          return send(res, 502, { error: `La lecture de Google Agenda a échoué : ${error instanceof Error ? error.message : 'erreur inconnue'}` });
         }
       }
 
-      const calendarTools = undefined;
 
       async function askGroq(chatMessages, includeTools = true) {
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
