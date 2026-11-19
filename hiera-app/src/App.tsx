@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 
 declare global {
   interface Window {
+    SpeechRecognition?: new () => HieraSpeechRecognition;
+    webkitSpeechRecognition?: new () => HieraSpeechRecognition;
     google?: {
       accounts: {
         id: {
@@ -13,6 +15,11 @@ declare global {
     };
   }
 }
+type HieraSpeechRecognition = {
+  lang: string; continuous: boolean; interimResults: boolean;
+  onresult: ((event: any) => void) | null; onerror: ((event: any) => void) | null;
+  onend: (() => void) | null; start: () => void; stop: () => void;
+};
 type GoogleUser = { email: string; name: string; picture: string };
 type Message = { role: 'assistant' | 'user'; content: string };
 type Conversation = { id: string; title: string; messages: Message[]; updatedAt: number; archived?: boolean };
@@ -38,6 +45,10 @@ export default function App() {
   const [model, setModel] = useState(() => localStorage.getItem('hiera-model') || 'groq:openai/gpt-oss-20b');
   const [busy, setBusy] = useState(false);
   const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
+  const [liveVoice, setLiveVoice] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState('Mode vocal désactivé');
+  const recognitionRef = useRef<HieraSpeechRecognition | null>(null);
+  const liveVoiceRef = useRef(false);
   const [error, setError] = useState('');
   const [googleClientId, setGoogleClientId] = useState('');
   const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
@@ -160,23 +171,57 @@ export default function App() {
     }
   }
 
-  async function sendMessage(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const content = draft.trim();
-    if (!content || busy) return;
-    const nextMessages: Message[] = [...messages, { role: 'user', content }];
+  function startVoiceListening() {
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) { setError("La reconnaissance vocale n'est pas prise en charge par ce navigateur. Essaie Chrome."); setLiveVoice(false); liveVoiceRef.current=false; return; }
+    const recognition = new Recognition();
+    recognition.lang = settingsValues.language || 'fr-FR';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results as ArrayLike<any>).map((result: any) => result[0]?.transcript || '').join(' ').trim();
+      if (transcript) void sendText(transcript, true);
+    };
+    recognition.onerror = (event) => { setVoiceStatus(event.error === 'not-allowed' ? "Autorisation du micro refusée" : "Je n'ai pas compris, réessaie"); };
+    recognition.onend = () => { recognitionRef.current = null; };
+    recognitionRef.current = recognition;
+    try { recognition.start(); setVoiceStatus("J'écoute…"); }
+    catch { setVoiceStatus("Micro indisponible"); }
+  }
+
+  function stopLiveVoice() {
+    liveVoiceRef.current = false;
+    setLiveVoice(false);
+    recognitionRef.current?.stop();
+    recognitionRef.current = null;
+    window.speechSynthesis?.cancel();
+    setVoiceStatus('Mode vocal désactivé');
+  }
+
+  function startLiveVoice() {
+    if (!('speechSynthesis' in window)) { setError("La lecture vocale n'est pas disponible sur ce navigateur."); return; }
+    liveVoiceRef.current = true;
+    setLiveVoice(true);
+    setError('');
+    startVoiceListening();
+  }
+
+  async function sendText(content: string, fromVoice = false) {
+    const clean = content.trim();
+    if (!clean || busy) return;
+    const nextMessages: Message[] = [...messages, { role: 'user', content: clean }];
     setMessages(nextMessages);
     persistConversation(nextMessages);
     setDraft('');
     setError('');
     setBusy(true);
+    if (fromVoice) setVoiceStatus('Hiera prépare sa réponse…');
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          provider: 'groq',
-          model,
+          provider: 'groq', model,
           language: settingsValues.language || 'fr',
           familySafeMode: settingsValues.familySafeMode !== false,
           assistantName: settingsValues.assistantName || 'Hiera',
@@ -187,12 +232,31 @@ export default function App() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'La demande a échoué.');
       if (typeof data.reply !== 'string' || !data.reply.trim()) throw new Error("Le service IA n'a pas renvoyé de réponse.");
-      setMessages((current) => { const updated = [...current, { role: 'assistant' as const, content: data.reply }]; persistConversation(updated); return updated; });
+      const updated = [...nextMessages, { role: 'assistant' as const, content: data.reply }];
+      setMessages(updated);
+      persistConversation(updated);
+      if (fromVoice || liveVoiceRef.current) {
+        const utterance = new SpeechSynthesisUtterance(data.reply);
+        utterance.lang = settingsValues.language || 'fr-FR';
+        utterance.onstart = () => setVoiceStatus('Hiera parle…');
+        utterance.onend = () => {
+          if (liveVoiceRef.current) startVoiceListening();
+          else setVoiceStatus('Réponse vocale terminée');
+        };
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de joindre Hiera.');
+      if (liveVoiceRef.current) setVoiceStatus('Erreur de connexion');
     } finally {
       setBusy(false);
     }
+  }
+
+  async function sendMessage(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await sendText(draft);
   }
 
   function newConversation() {
@@ -365,7 +429,7 @@ export default function App() {
             <form className="composer" onSubmit={sendMessage}>
               <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { const enterBehavior = settingsValues.enterBehavior || (settingsValues.enterToSend === false ? 'newline' : 'send'); if (event.key === "Enter" && !event.shiftKey && enterBehavior === 'send') { event.preventDefault(); (event.currentTarget.form as HTMLFormElement)?.requestSubmit(); } }} placeholder="Écris un message à Hiera…" rows={1} aria-label="Message à Hiera" disabled={busy} />
               {error && <p className="error-message" role="alert">{error}</p>}
-              <div className="composer-footer"><span>Pose ta question à Hiera</span><button type="submit" disabled={!draft.trim() || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div>
+              <div className="composer-footer"><span>Pose ta question à Hiera</span><div className="composer-actions"><button type="button" className={liveVoice ? 'voice-toggle active' : 'voice-toggle'} onClick={liveVoice ? stopLiveVoice : startLiveVoice} aria-label={liveVoice ? 'Arrêter la conversation vocale' : 'Démarrer la conversation vocale'}>{liveVoice ? '■' : '🎙️'}</button><button type="submit" disabled={!draft.trim() || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div></div>{liveVoice && <p className="voice-status" role="status">{voiceStatus} · Micro actif uniquement pendant l'écoute. <button type="button" onClick={stopLiveVoice}>Arrêter</button></p>}
             </form>
             <p className="disclaimer">Ne partage jamais de données personnelles ou confidentielles dans une conversation.</p>
           </>
