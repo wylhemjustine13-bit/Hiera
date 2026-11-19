@@ -220,6 +220,7 @@ export default function App() {
       if (attachments.length + next.length >= 5) { setError('Tu peux joindre jusqu’à 5 fichiers par message.'); break; }
       if (file.size > 2 * 1024 * 1024) { setError(`${file.name} dépasse la limite de 2 Mo.`); continue; }
       if (file.type.startsWith('image/')) {
+        if (attachments.filter((item) => item.dataUrl).length + next.filter((item) => item.dataUrl).length >= 3) { setError('Tu peux joindre jusqu’à 3 images par message.'); continue; }
         if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { setError('Images acceptées : JPG, PNG et WebP.'); continue; }
         const dataUrl = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
@@ -244,8 +245,8 @@ export default function App() {
   }
 
   async function sendText(content: string, fromVoice = false, includedAttachments: HieraAttachment[] = []) {
-    const clean = content.trim();
-    if ((!clean && !includedAttachments.length) || busyRef.current) return;
+    const clean = content.trim() || (includedAttachments.length ? 'Analyse ces pièces jointes.' : '');
+    if (!clean || busyRef.current) return;
     const nextMessages: Message[] = [...messagesRef.current, { role: 'user', content: clean }];
     messagesRef.current = nextMessages;
     busyRef.current = true;
