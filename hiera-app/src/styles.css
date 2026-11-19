@@ -659,3 +659,8 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 .composer-actions .voice-mic-icon{display:block;width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .composer-actions .voice-toggle.active .voice-mic-icon{color:#fff}
 :root[data-theme="light"] .composer-actions .voice-toggle{background:#fff;color:#654b7c;border-color:#bda7d7}
+
+
+/* Token usage transparency */
+.token-usage-note{display:block;margin-top:6px;color:#a99ab9;font-size:10px;line-height:1.4}
+:root[data-theme="light"] .token-usage-note{color:#756982}
