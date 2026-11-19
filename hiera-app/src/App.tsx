@@ -46,6 +46,7 @@ function AtomLogo() {
 
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [privateMode, setPrivateMode] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>(() => { try { return JSON.parse(localStorage.getItem('hiera-conversations') || '[]'); } catch { return []; } });
   const [currentConversationId, setCurrentConversationId] = useState<string>(() => crypto.randomUUID());
   const [showArchived, setShowArchived] = useState(false);
@@ -120,11 +121,20 @@ export default function App() {
   const googleButtonRef = useRef<HTMLDivElement>(null);
   function updateSetting(key: string, value: any) { setSettingsValues((current) => ({ ...current, [key]: value })); }
   function persistConversation(items: Message[], id = currentConversationId) {
-    if (!items.length || settingsValues.saveHistory === false) return;
+    if (privateMode || !items.length || settingsValues.saveHistory === false) return;
     const first = items.find((item) => item.role === 'user')?.content || 'Nouvelle conversation';
     setConversations((current) => [{ id, title: first.slice(0, 42), messages: items, updatedAt: Date.now() }, ...current.filter((item) => item.id !== id)].slice(0, 100));
   }
-  function openConversation(item: Conversation) { setCurrentConversationId(item.id); setMessages(item.messages); setSettingsOpen(false); setError(''); }
+  function openConversation(item: Conversation) { if (privateMode) return; setCurrentConversationId(item.id); setMessages(item.messages); setSettingsOpen(false); setError(''); }
+  function togglePrivateMode() {
+    const next = !privateMode;
+    if (next && messagesRef.current.length && !privateMode) persistConversation(messagesRef.current);
+    attachments.forEach((item) => { if (item.previewUrl) URL.revokeObjectURL(item.previewUrl); });
+    setPrivateMode(next);
+    setMessages([]); messagesRef.current = []; setCurrentConversationId(crypto.randomUUID());
+    setDraft(''); setAttachments([]); setPreviewAttachment(null); setAttachmentMenuOpen(false);
+    setSettingsOpen(false); setError('');
+  }
   function archiveConversation(id: string) { setConversations((current) => current.map((item) => item.id === id ? { ...item, archived: !item.archived } : item)); }
   function removeConversation(id: string) { setConversations((current) => current.filter((item) => item.id !== id)); if (id === currentConversationId) { setMessages([]); setCurrentConversationId(crypto.randomUUID()); } }
   useEffect(() => { localStorage.setItem('hiera-conversations', JSON.stringify(conversations)); }, [conversations]);
@@ -507,7 +517,7 @@ export default function App() {
     messagesRef.current = nextMessages;
     busyRef.current = true;
     setMessages(nextMessages);
-    persistConversation(nextMessages);
+    if (!privateMode) persistConversation(nextMessages);
     setDraft('');
     if (includedAttachments.length) { includedAttachments.forEach((item) => { if (item.previewUrl) URL.revokeObjectURL(item.previewUrl); }); setAttachments([]); setPreviewAttachment(null); }
     setError('');
@@ -537,7 +547,7 @@ export default function App() {
       const updated = [...nextMessages, { role: 'assistant' as const, content: data.reply, tokensUsed: typeof data.usage?.tokensUsed === 'number' ? data.usage.tokensUsed : undefined }];
       messagesRef.current = updated;
       setMessages(updated);
-      persistConversation(updated);
+      if (!privateMode) persistConversation(updated);
       if (fromVoice || liveVoiceRef.current) {
         speakText(data.reply, 'directVoice');
       }
@@ -619,7 +629,7 @@ export default function App() {
         <button className="new-chat" onClick={newConversation} disabled={busy}>＋ Nouvelle conversation</button>
         <div className="side-label">ESPACE</div>
         <nav className="sidebar-primary-nav" aria-label="Navigation principale"><button className={`side-link ${!settingsOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(false); }}><span>◉</span><b>Conversation</b></button><button className={`side-link ${settingsOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(true); setSettingsPage("home"); if (window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false); }}><span>⚙</span><b>Paramètres</b></button></nav>
-        <div className="history-heading">CONVERSATIONS</div><div className="conversation-history">{conversations.filter((item) => !!item.archived === showArchived).slice(0,12).map((item) => <div className="history-row" key={item.id}><button className="history-open" onClick={() => openConversation(item)} title={item.title}>{item.title}</button><button className="history-action" onClick={() => archiveConversation(item.id)} aria-label={item.archived ? "Désarchiver" : "Archiver"}>{item.archived ? "↩" : "▣"}</button></div>)}</div><button className="history-toggle" onClick={() => setShowArchived((v) => !v)}>{showArchived ? "Voir les conversations" : "Voir les archivées"}</button><button className="history-clear" onClick={clearAllHistory} disabled={busy || conversations.length === 0}>⌫ Supprimer tout l’historique</button>
+        {!privateMode && <><div className="history-heading">CONVERSATIONS</div><div className="conversation-history">{conversations.filter((item) => !!item.archived === showArchived).slice(0,12).map((item) => <div className="history-row" key={item.id}><button className="history-open" onClick={() => openConversation(item)} title={item.title}>{item.title}</button><button className="history-action" onClick={() => archiveConversation(item.id)} aria-label={item.archived ? "Désarchiver" : "Archiver"}>{item.archived ? "↩" : "▣"}</button></div>)}</div><button className="history-toggle" onClick={() => setShowArchived((v) => !v)}>{showArchived ? "Voir les conversations" : "Voir les archivées"}</button><button className="history-clear" onClick={clearAllHistory} disabled={busy || conversations.length === 0}>⌫ Supprimer tout l’historique</button></>}
         <div className="sidebar-account"><div className="account-status"><span className="status-dot" /> {googleUser ? "Google connecté" : "Compte non connecté"}</div><div className="account-provider"><span className="google-g">G</span><span>{googleUser ? googleUser.email : "Gérer dans Paramètres"}</span></div></div>
       </aside>
       {sidebarOpen && <button className="sidebar-dismiss-zone" onClick={() => setSidebarOpen(false)} aria-label="Rétracter la barre latérale" />}
@@ -629,6 +639,7 @@ export default function App() {
           <button className="mobile-menu-button" onClick={() => setSidebarOpen((open) => !open)} aria-label="Afficher ou masquer le menu"><AtomLogo /></button>
           <span className="topbar-title">{settingsOpen ? "Paramètres" : "Conversation"}</span>
           {googleUser && <span className={`plan-badge plan-${tokenUsage?.plan || 'basic'}`} title="Forfait associé à ton compte">{({ basic: 'Basic', plus: 'Plus', pro: 'Pro', ultimate: 'Ultime' } as Record<string, string>)[tokenUsage?.plan || 'basic'] || 'Basic'}</span>}
+          <button type="button" className={`private-toggle ${privateMode ? 'active' : ''}`} onClick={togglePrivateMode} title={privateMode ? 'Quitter la navigation privée' : 'Activer la navigation privée'} aria-pressed={privateMode}>{privateMode ? '◉ Privé' : '◌ Privé'}</button>
           <button type="button" className="fullscreen-toggle" onClick={toggleFullscreen} aria-label={isFullscreen ? "Quitter le plein écran" : "Passer en plein écran"} title={isFullscreen ? "Quitter le plein écran" : "Plein écran"}>{isFullscreen ? "⤢" : "⛶"}<span>{isFullscreen ? "Quitter" : "Plein écran"}</span></button>
         </header>
 
@@ -771,6 +782,7 @@ export default function App() {
           </section>        ) : (
           <>
             <div className="conversation">
+              {privateMode && <div className="private-notice">◉ Navigation privée activée · Cette conversation ne sera pas enregistrée dans ton historique.</div>}
               {authError && <p className="auth-error" role="alert">{authError}</p>}
               {!googleClientId && <p className="auth-hint">Connexion Google : configuration à terminer sur Render.</p>}
               {messages.length === 0 && <div className="welcome compact-welcome"><div className="atom" aria-hidden="true"><span className="orbit"/><span className="orbit orbit-two"/><span className="orbit orbit-three"/><span className="nucleus"/></div><h1>Hiera</h1><p className="subtitle">Que souhaites-tu faire aujourd’hui ?</p><div className="quick-prompts"><button type="button" onClick={() => setDraft('Aide-moi à organiser ma journée.')}><span>✦</span>Organiser ma journée</button><button type="button" onClick={() => setDraft('Explique-moi un sujet simplement.')}><span>◈</span>Apprendre quelque chose</button><button type="button" onClick={() => setDraft('Aide-moi à trouver une idée créative.')}><span>✧</span>Trouver une idée</button><button type="button" onClick={() => setDraft('Aide-moi à résoudre un problème.')}><span>⌘</span>Résoudre un problème</button></div></div>}
