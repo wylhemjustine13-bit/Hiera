@@ -147,6 +147,36 @@ const server = createServer(async (req, res) => {
     return send(res, 200, { user: readSession(req) });
   }
 
+  if (req.method === 'GET' && url.pathname === '/api/usage') {
+    const usageUser = readSession(req);
+    if (!usageUser) return send(res, 401, { error: 'Connecte-toi pour consulter ton forfait.' });
+    try {
+      await ensureUsageTable();
+      await pool.query(
+        'INSERT INTO hiera_usage (user_id, plan, period_started_at, message_count, token_count) VALUES ($1, \'basic\', NOW(), 0, 0) ON CONFLICT (user_id) DO NOTHING',
+        [usageUser.sub],
+      );
+      const result = await pool.query(
+        'SELECT plan, token_count FROM hiera_usage WHERE user_id = $1',
+        [usageUser.sub],
+      );
+      const row = result.rows[0] || { plan: 'basic', token_count: 0 };
+      const plan = ['basic', 'plus', 'pro', 'ultimate'].includes(row.plan) ? row.plan : 'basic';
+      const budgets = { basic: 50000, plus: 150000, pro: 500000, ultimate: 1500000 };
+      const tokensUsedTotal = Number(row.token_count || 0);
+      return send(res, 200, {
+        plan,
+        tokensUsed: 0,
+        tokensUsedTotal,
+        tokenBudget: budgets[plan],
+        tokensRemaining: Math.max(0, budgets[plan] - tokensUsedTotal),
+      });
+    } catch (usageError) {
+      console.error('Usage lookup failed:', usageError instanceof Error ? usageError.message : 'unknown error');
+      return send(res, 500, { error: 'Impossible de charger le forfait.' });
+    }
+  }
+
   if (req.method === 'POST' && (url.pathname === '/api/auth/register' || url.pathname === '/api/auth/login')) {
     const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
     const now = Date.now();
