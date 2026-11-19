@@ -858,3 +858,20 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 
 
 /* Générateur d'images intégré */
+
+
+/* Lecteur de documents et aperçus de pièces jointes */
+.attachment-open{display:flex;align-items:center;gap:7px;min-width:0;max-width:100%;padding:0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.attachment-open>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.document-overlay{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:18px;background:#05030dcc;backdrop-filter:blur(9px)}
+.document-panel{width:min(100%,1000px);height:min(88vh,850px);display:flex;flex-direction:column;overflow:hidden;border:1px solid #a77aff55;border-radius:18px;background:#100b25;box-shadow:0 24px 80px #0009}
+.document-header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 18px;border-bottom:1px solid #ffffff18;color:#f8f4ff}
+.document-header>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.document-header strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.document-header small{color:#b9a9d8;font-size:11px}
+.document-header button{width:34px;height:34px;flex:none;border:0;border-radius:10px;background:#ffffff12;color:inherit;font-size:22px;cursor:pointer}
+.pdf-viewer{width:100%;height:100%;border:0;background:#fff}
+.document-text{flex:1;overflow:auto;margin:0;padding:22px;color:#eee6ff;font:13px/1.7 ui-monospace,SFMono-Regular,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+:root[data-theme="light"] .document-panel{background:#fff}
+:root[data-theme="light"] .document-header,:root[data-theme="light"] .document-text{color:#241b30}
+@media(max-width:600px){.document-overlay{padding:0}.document-panel{width:100%;height:100%;max-height:100%;border-radius:0}.document-header{padding:12px}}
