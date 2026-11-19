@@ -153,6 +153,19 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!googleUser) { setTokenUsage(null); return; }
+    let active = true;
+    fetch('/api/usage')
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Forfait indisponible.');
+        return response.json();
+      })
+      .then((usage) => { if (active) setTokenUsage(usage); })
+      .catch(() => { if (active) setTokenUsage(null); });
+    return () => { active = false; };
+  }, [googleUser]);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const result = params.get('google_calendar');
     if (result === 'connected') setCalendarNotice('Google Agenda est connecté.');
@@ -615,6 +628,7 @@ export default function App() {
         <header className="topbar">
           <button className="mobile-menu-button" onClick={() => setSidebarOpen((open) => !open)} aria-label="Afficher ou masquer le menu"><AtomLogo /></button>
           <span className="topbar-title">{settingsOpen ? "Paramètres" : "Conversation"}</span>
+          {googleUser && <span className={`plan-badge plan-${tokenUsage?.plan || 'basic'}`} title="Forfait associé à ton compte">{({ basic: 'Basic', plus: 'Plus', pro: 'Pro', ultimate: 'Ultime' } as Record<string, string>)[tokenUsage?.plan || 'basic'] || 'Basic'}</span>}
           <button type="button" className="fullscreen-toggle" onClick={toggleFullscreen} aria-label={isFullscreen ? "Quitter le plein écran" : "Passer en plein écran"} title={isFullscreen ? "Quitter le plein écran" : "Plein écran"}>{isFullscreen ? "⤢" : "⛶"}<span>{isFullscreen ? "Quitter" : "Plein écran"}</span></button>
         </header>
 
