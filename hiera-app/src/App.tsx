@@ -44,6 +44,9 @@ export default function App() {
   const [draft, setDraft] = useState('');
   const [model, setModel] = useState(() => localStorage.getItem('hiera-model') || 'groq:openai/gpt-oss-20b');
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const messagesRef = useRef<Message[]>(messages);
+  messagesRef.current = messages;
   const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
   const [liveVoice, setLiveVoice] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState('Mode vocal désactivé');
@@ -183,7 +186,7 @@ export default function App() {
       if (transcript) void sendText(transcript, true);
     };
     recognition.onerror = (event) => { setVoiceStatus(event.error === 'not-allowed' ? "Autorisation du micro refusée" : "Je n'ai pas compris, réessaie"); };
-    recognition.onend = () => { recognitionRef.current = null; };
+    recognition.onend = () => { recognitionRef.current = null; if (liveVoiceRef.current && !busyRef.current) window.setTimeout(() => { if (liveVoiceRef.current && !busyRef.current && !recognitionRef.current) startVoiceListening(); }, 500); };
     recognitionRef.current = recognition;
     try { recognition.start(); setVoiceStatus("J'écoute…"); }
     catch { setVoiceStatus("Micro indisponible"); }
@@ -208,8 +211,10 @@ export default function App() {
 
   async function sendText(content: string, fromVoice = false) {
     const clean = content.trim();
-    if (!clean || busy) return;
-    const nextMessages: Message[] = [...messages, { role: 'user', content: clean }];
+    if (!clean || busyRef.current) return;
+    const nextMessages: Message[] = [...messagesRef.current, { role: 'user', content: clean }];
+    messagesRef.current = nextMessages;
+    busyRef.current = true;
     setMessages(nextMessages);
     persistConversation(nextMessages);
     setDraft('');
@@ -233,6 +238,7 @@ export default function App() {
       if (!response.ok) throw new Error(data.error || 'La demande a échoué.');
       if (typeof data.reply !== 'string' || !data.reply.trim()) throw new Error("Le service IA n'a pas renvoyé de réponse.");
       const updated = [...nextMessages, { role: 'assistant' as const, content: data.reply }];
+      messagesRef.current = updated;
       setMessages(updated);
       persistConversation(updated);
       if (fromVoice || liveVoiceRef.current) {
@@ -250,6 +256,7 @@ export default function App() {
       setError(err instanceof Error ? err.message : 'Impossible de joindre Hiera.');
       if (liveVoiceRef.current) setVoiceStatus('Erreur de connexion');
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   }
