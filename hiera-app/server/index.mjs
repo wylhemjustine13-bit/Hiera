@@ -180,8 +180,10 @@ const server = createServer(async (req, res) => {
       user_id TEXT PRIMARY KEY,
       plan TEXT NOT NULL DEFAULT 'basic',
       period_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      message_count INTEGER NOT NULL DEFAULT 0
+      message_count INTEGER NOT NULL DEFAULT 0,
+      token_count BIGINT NOT NULL DEFAULT 0
     )`);
+    await pool.query('ALTER TABLE hiera_usage ADD COLUMN IF NOT EXISTS token_count BIGINT NOT NULL DEFAULT 0');
     usageTableReady = true;
   }
 
@@ -445,8 +447,8 @@ const server = createServer(async (req, res) => {
       try {
         await ensureUsageTable();
         const usage = await pool.query(
-          `INSERT INTO hiera_usage (user_id, plan, period_started_at, message_count)
-           VALUES ($1, 'basic', NOW(), 1)
+          `INSERT INTO hiera_usage (user_id, plan, period_started_at, message_count, token_count)
+           VALUES ($1, 'basic', NOW(), 1, 0)
            ON CONFLICT (user_id) DO UPDATE SET
              period_started_at = CASE
                WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN NOW()
@@ -455,12 +457,16 @@ const server = createServer(async (req, res) => {
              message_count = CASE
                WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 1
                ELSE hiera_usage.message_count + 1
+             END,
+             token_count = CASE
+               WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 0
+               ELSE hiera_usage.token_count
              END
            WHERE CASE
              WHEN NOW() >= hiera_usage.period_started_at + INTERVAL '24 hours' THEN 0
              ELSE hiera_usage.message_count
            END < 100
-           RETURNING message_count, period_started_at`,
+           RETURNING message_count, period_started_at, token_count, plan`,
           [chatUser.sub],
         );
         if (!usage.rowCount) {
@@ -470,6 +476,21 @@ const server = createServer(async (req, res) => {
             resetAt: current.rows[0]?.period_started_at ? new Date(new Date(current.rows[0].period_started_at).getTime() + 24 * 60 * 60 * 1000).toISOString() : null,
             plan: 'basic',
             limit: 100,
+          });
+        }
+        const activeUsage = usage.rows[0];
+        const tokenBudgets = { basic: 50000, plus: 150000, pro: 500000, ultimate: 1500000 };
+        const activePlan = tokenBudgets[activeUsage.plan] ? activeUsage.plan : 'basic';
+        const tokenBudget = tokenBudgets[activePlan];
+        const tokensAlreadyUsed = Number(activeUsage.token_count || 0);
+        if (tokensAlreadyUsed >= tokenBudget) {
+          return send(res, 429, {
+            error: `Tu as atteint le budget de ${tokenBudget.toLocaleString('fr-FR')} jetons de Hiera ${activePlan}. Ton budget sera renouvelé à la fin de ta période de 24 heures.`,
+            plan: activePlan,
+            tokenBudget,
+            tokensUsed: tokensAlreadyUsed,
+            tokensRemaining: 0,
+            resetAt: new Date(new Date(activeUsage.period_started_at).getTime() + 24 * 60 * 60 * 1000).toISOString(),
           });
         }
       } catch (quotaError) {
@@ -570,10 +591,16 @@ const server = createServer(async (req, res) => {
           const status = response.status === 401 ? 502 : response.status === 429 ? 429 : 502;
           throw Object.assign(new Error(message), { status });
         }
-        return data?.choices?.[0]?.message;
+        return {
+          message: data?.choices?.[0]?.message,
+          usage: data?.usage || {},
+        };
       }
 
-      let assistantMessage = await askGroq(messages);
+      const firstCompletion = await askGroq(messages);
+      let assistantMessage = firstCompletion.message;
+      let totalPromptTokens = Number(firstCompletion.usage.prompt_tokens || 0);
+      let totalCompletionTokens = Number(firstCompletion.usage.completion_tokens || 0);
       if (Array.isArray(assistantMessage?.tool_calls) && assistantMessage.tool_calls.length) {
         messages.push(assistantMessage);
         for (const toolCall of assistantMessage.tool_calls.slice(0, 2)) {
@@ -607,14 +634,39 @@ const server = createServer(async (req, res) => {
             content: JSON.stringify(toolResult),
           });
         }
-        assistantMessage = await askGroq(messages, false);
+        const finalCompletion = await askGroq(messages, false);
+        assistantMessage = finalCompletion.message;
+        totalPromptTokens += Number(finalCompletion.usage.prompt_tokens || 0);
+        totalCompletionTokens += Number(finalCompletion.usage.completion_tokens || 0);
       }
 
       const reply = assistantMessage?.content;
       if (typeof reply !== 'string' || !reply.trim()) {
         return send(res, 502, { error: 'La réponse du fournisseur était vide.' });
       }
-      return send(res, 200, { reply: reply.trim() });
+      const tokensUsed = totalPromptTokens + totalCompletionTokens;
+      const savedUsage = await pool.query(
+        `UPDATE hiera_usage
+         SET token_count = token_count + $2
+         WHERE user_id = $1
+         RETURNING token_count, plan, period_started_at`,
+        [chatUser.sub, tokensUsed],
+      );
+      const finalUsage = savedUsage.rows[0];
+      const finalPlan = finalUsage?.plan || 'basic';
+      const finalBudget = ({ basic: 50000, plus: 150000, pro: 500000, ultimate: 1500000 })[finalPlan] || 50000;
+      const tokensUsedTotal = Number(finalUsage?.token_count || tokensUsed);
+      return send(res, 200, {
+        reply: reply.trim(),
+        usage: {
+          plan: finalPlan,
+          tokensUsed,
+          tokensUsedTotal,
+          tokenBudget: finalBudget,
+          tokensRemaining: Math.max(0, finalBudget - tokensUsedTotal),
+          resetAt: finalUsage?.period_started_at ? new Date(new Date(finalUsage.period_started_at).getTime() + 24 * 60 * 60 * 1000).toISOString() : null,
+        },
+      });
     } catch (error) {
       return send(res, 400, { error: error instanceof Error ? error.message : 'Requête invalide.' });
     }
