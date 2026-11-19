@@ -417,8 +417,8 @@ export default function App() {
           <form className="auth-form" onSubmit={submitEmailAuth}>
             {authMode === 'register' && <label>Nom affiché<input autoComplete="name" value={authName} onChange={(e) => setAuthName(e.target.value)} minLength={2} maxLength={80} required placeholder="Ton nom" /></label>}
             <label>Adresse e-mail<input type="email" autoComplete="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} required placeholder="nom@exemple.com" /></label>
-            <label>Mot de passe<input type="password" autoComplete={authMode === 'register' ? 'new-password' : 'current-password'} value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} minLength={10} maxLength={128} required placeholder="10 caractères minimum" /></label>
-            {authMode === 'register' && <small className="auth-password-hint">Utilise un mot de passe unique d'au moins 10 caractères.</small>}
+            <label>Mot de passe<input type="password" autoComplete={authMode === 'register' ? 'new-password' : 'current-password'} value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} minLength={8} maxLength={128} required placeholder="8 caractères minimum" /></label>
+            {authMode === 'register' && <small className="auth-password-hint">Utilise un mot de passe unique d'au moins 8 caractères.</small>}
             {authError && <p className="auth-form-error" role="alert">{authError}</p>}
             <button className="auth-submit" type="submit" disabled={authBusy}>{authBusy ? 'Patiente…' : authMode === 'register' ? 'Créer mon compte' : 'Se connecter'}</button>
           </form>
