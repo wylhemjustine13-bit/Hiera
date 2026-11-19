@@ -652,3 +652,10 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 :root[data-theme="light"] .attachment-chip button{color:#654b7c}
 :root[data-theme="light"] .composer-actions .attach-toggle{color:#654b7c;background:#fff;border-color:#bda7d7}
 :root[data-theme="light"] .attachment-hint{color:#756982}
+
+
+/* Contour fin pour le bouton micro */
+.composer-actions .voice-toggle{background:transparent;border:1px solid #9b78c855;color:#d9c3fa}
+.composer-actions .voice-mic-icon{display:block;width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.composer-actions .voice-toggle.active .voice-mic-icon{color:#fff}
+:root[data-theme="light"] .composer-actions .voice-toggle{background:#fff;color:#654b7c;border-color:#bda7d7}
