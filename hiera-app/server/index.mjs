@@ -181,9 +181,13 @@ const server = createServer(async (req, res) => {
       plan TEXT NOT NULL DEFAULT 'basic',
       period_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       message_count INTEGER NOT NULL DEFAULT 0,
-      token_count BIGINT NOT NULL DEFAULT 0
+      token_count BIGINT NOT NULL DEFAULT 0,
+      voice_seconds INTEGER NOT NULL DEFAULT 0,
+      voice_last_ping_at TIMESTAMPTZ
     )`);
     await pool.query('ALTER TABLE hiera_usage ADD COLUMN IF NOT EXISTS token_count BIGINT NOT NULL DEFAULT 0');
+    await pool.query('ALTER TABLE hiera_usage ADD COLUMN IF NOT EXISTS voice_seconds INTEGER NOT NULL DEFAULT 0');
+    await pool.query('ALTER TABLE hiera_usage ADD COLUMN IF NOT EXISTS voice_last_ping_at TIMESTAMPTZ');
     usageTableReady = true;
   }
 
