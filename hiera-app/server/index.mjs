@@ -820,8 +820,8 @@ const server = createServer(async (req, res) => {
         content: `Tu es ${assistantName}, un assistant IA utile, honnête et bienveillant. Réponds toujours en ${responseLanguage}, sauf si l'utilisateur demande explicitement une autre langue. ${responseStyle} ${familyStyle} Utilise parfois un ou deux émojis pertinents pour rendre tes réponses expressives, mais reste naturel et n'en ajoute pas à chaque phrase. Tu contrôles aussi la présentation écrite de tes réponses : utilise des paragraphes aérés, des titres Markdown (#, ##, ###), des listes et des citations lorsque cela améliore la lisibilité. Mets en gras les idées importantes, en italique les nuances, et utilise ==texte== pour le surlignage et <u>texte</u> pour souligner. Tu peux choisir ponctuellement une police et une taille avec la syntaxe <font face="Georgia" size="20">texte</font>. Polices autorisées : Arial, Georgia, Verdana, Times New Roman, Courier New, Trebuchet MS ; taille de 12 à 32. Reste sobre et adapte la présentation au contenu. Pour un texte à copier, fournis un bloc autonome bien structuré. N'invente pas de capacités ou d'actions que tu n'as pas réalisées. Respecte les règles de sécurité et refuse les demandes dangereuses. Si l'utilisateur joint une image, analyse uniquement ce qui est réellement visible et signale toute incertitude. Si l'utilisateur joint le contenu d'un fichier, base ton analyse sur le texte fourni et indique si le document semble incomplet. Respecte les règles de sécurité et refuse les demandes dangereuses. Si l'outil Google Agenda est disponible, utilise-le pour répondre aux questions sur les rendez-vous. Ne prétends jamais avoir consulté l'agenda sans avoir réellement appelé l'outil. Pour toute création, modification ou suppression, demande d'abord une confirmation explicite et n'effectue aucune modification sans confirmation.`,
       }, ...userMessages];
 
-      const latestUserMessage = [...body.messages].reverse().find((message) => message?.role === 'user' && typeof message.content === 'string')?.content || '';
-      const asksCalendar = /agenda|calendrier|rendez[- ]?vous|événements?|planning|mon emploi du temps|mes horaires/i.test(latestUserMessage);
+      const calendarUserMessage = [...body.messages].reverse().find((message) => message?.role === 'user' && typeof message.content === 'string')?.content || '';
+      const asksCalendar = /agenda|calendrier|rendez[- ]?vous|événements?|planning|mon emploi du temps|mes horaires/i.test(calendarUserMessage);
 
       // Réponse déterministe pour les questions d'agenda : le modèle ne peut pas ignorer les données.
       if (asksCalendar) {
@@ -829,7 +829,7 @@ const server = createServer(async (req, res) => {
           return send(res, 401, { error: 'Reconnecte-toi à ton compte Google dans les paramètres de Hiera pour consulter ton agenda.' });
         }
         try {
-          const days = /semaine|7 jours/i.test(latestUserMessage) ? 7 : 30;
+          const days = /semaine|7 jours/i.test(calendarUserMessage) ? 7 : 30;
           const timeMin = new Date().toISOString();
           const timeMax = new Date(Date.now() + days * 86400000).toISOString();
           const params = new URLSearchParams({ timeMin, timeMax, singleEvents: 'true', orderBy: 'startTime', maxResults: '50' });
