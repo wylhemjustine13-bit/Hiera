@@ -682,3 +682,13 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 :root[data-theme="light"] .billing-checkout-intro p,:root[data-theme="light"] .billing-checkout-panel p{color:#6d6078}
 :root[data-theme="light"] .billing-checkout-panel b{color:#563875}
 :root[data-theme="light"] .billing-checkout-panel .billing-select-button{color:#654b7c}
+
+
+/* Temporary recovery-code activation */
+.recovery-code-label{display:flex;flex-direction:column;gap:7px;color:#d9c8ed;font-size:11px;font-weight:600}
+.recovery-code-input{width:100%;max-width:260px;padding:12px 13px;border:1px solid #9b78c855;border-radius:9px;background:#0d0920;color:#fff;font-size:18px;letter-spacing:5px;outline:none}
+.recovery-code-input:focus{border-color:#b994ed;box-shadow:0 0 0 3px #b994ed22}
+.recovery-code-status{font-size:11px;line-height:1.5;color:#d9c3fa}
+.billing-select-button:disabled{opacity:.5;cursor:not-allowed}
+:root[data-theme="light"] .recovery-code-label{color:#563875}
+:root[data-theme="light"] .recovery-code-input{background:#fff;color:#39244f;border-color:#d7c4ed}
