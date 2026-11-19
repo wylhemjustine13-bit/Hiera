@@ -538,6 +538,13 @@ export default function App() {
 
   async function sendText(content: string, fromVoice = false, includedAttachments: HieraAttachment[] = []) {
     const clean = content.trim() || (includedAttachments.length ? 'Analyse ces pièces jointes.' : '');
+    // Intercepter le déclencheur dans le chemin commun (clavier, vocal et autres appels).
+    // Les droits restent contrôlés par /api/admin/overview côté serveur.
+    if (clean && isAdminTrigger(clean)) {
+      setDraft(''); setAttachments([]);
+      await openAdminPanel();
+      return;
+    }
     if (!clean || busyRef.current) return;
     const nextMessages: Message[] = [...messagesRef.current, { role: 'user', content: clean }];
     messagesRef.current = nextMessages;
