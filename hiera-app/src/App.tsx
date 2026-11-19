@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import FormattedMessage from './FormattedMessage';
 
 declare global {
   interface Window {
@@ -685,7 +686,7 @@ export default function App() {
                   <article className={`message ${message.role}`} key={index}>
                     {message.role === 'assistant' && <span className="message-mark">✳</span>}
                     <div className="message-body">
-                      <p>{message.content}</p>
+                      <FormattedMessage content={message.content} />
                       {message.role === 'assistant' && <div className="message-actions"><button className="copy-message" type="button" onClick={() => copyMessage(message.content, index)} aria-label="Copier la réponse" title="Copier la réponse">{copiedMessageIndex === index ? '✓ Copié' : '⧉ Copier'}</button><button className="copy-message" type="button" onClick={() => speakText(message.content, 'readVoice')} aria-label="Lire la réponse à haute voix" title="Lire à haute voix">♫ Lire</button><button className="copy-message" type="button" onClick={() => openWritingEditor(message.content)}>✎ Modifier</button></div>}
                       {message.role === 'assistant' && typeof message.tokensUsed === 'number' && <small className="token-usage-note">≈ {message.tokensUsed.toLocaleString('fr-FR')} jetons utilisés pour cet échange</small>}
                     </div>
