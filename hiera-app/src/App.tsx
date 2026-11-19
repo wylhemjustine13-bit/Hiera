@@ -21,7 +21,7 @@ type HieraSpeechRecognition = {
   onend: (() => void) | null; start: () => void; stop: () => void;
 };
 type GoogleUser = { email: string; name: string; picture: string };
-type Message = { role: 'assistant' | 'user'; content: string };
+type Message = { role: 'assistant' | 'user'; content: string; tokensUsed?: number };
 type Conversation = { id: string; title: string; messages: Message[]; updatedAt: number; archived?: boolean };
 type HieraAttachment = { id: string; name: string; mimeType: string; size: number; dataUrl?: string; text?: string };
 
@@ -51,6 +51,7 @@ export default function App() {
   const messagesRef = useRef<Message[]>(messages);
   messagesRef.current = messages;
   const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
+  const [tokenUsage, setTokenUsage] = useState<{ plan: string; tokensUsed: number; tokensUsedTotal: number; tokenBudget: number; tokensRemaining: number } | null>(null);
   const [liveVoice, setLiveVoice] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState('Mode vocal désactivé');
   const recognitionRef = useRef<HieraSpeechRecognition | null>(null);
@@ -274,7 +275,8 @@ export default function App() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'La demande a échoué.');
       if (typeof data.reply !== 'string' || !data.reply.trim()) throw new Error("Le service IA n'a pas renvoyé de réponse.");
-      const updated = [...nextMessages, { role: 'assistant' as const, content: data.reply }];
+      if (data.usage && typeof data.usage.tokensUsed === 'number') setTokenUsage(data.usage);
+      const updated = [...nextMessages, { role: 'assistant' as const, content: data.reply, tokensUsed: typeof data.usage?.tokensUsed === 'number' ? data.usage.tokensUsed : undefined }];
       messagesRef.current = updated;
       setMessages(updated);
       persistConversation(updated);
@@ -400,7 +402,7 @@ export default function App() {
                 </div>
               </>}
             </div>}
-            {settingsPage === 'usage' && <div className="settings-detail"><div className="settings-feature-card"><strong>Utilisation locale</strong><p>{conversations.length} conversation(s) enregistrée(s) sur cet appareil.</p><p>{conversations.reduce((n,c) => n+c.messages.length,0)} messages conservés dans l'historique local.</p></div></div>}
+            {settingsPage === 'usage' && <div className="settings-detail"><div className="settings-feature-card"><strong>Utilisation locale</strong><p>{conversations.length} conversation(s) enregistrée(s) sur cet appareil.</p><p>{conversations.reduce((n,c) => n+c.messages.length,0)} messages conservés dans l'historique local.</p></div>{tokenUsage && <div className="settings-feature-card"><strong>Consommation IA — dernière utilisation</strong><p>{tokenUsage.tokensUsed.toLocaleString('fr-FR')} jetons pour le dernier échange.</p><p>{tokenUsage.tokensUsedTotal.toLocaleString('fr-FR')} / {tokenUsage.tokenBudget.toLocaleString('fr-FR')} jetons utilisés sur la période.</p><p>Solde estimé : {tokenUsage.tokensRemaining.toLocaleString('fr-FR')} jetons.</p></div>}</div>}
             {settingsPage === 'billing' && <div className="settings-detail billing-detail">
               <p className="settings-description">Choisis le niveau de Hiera qui correspond à tes besoins. Basic restera gratuit avec un quota strict ; Plus, Pro et Ultimate seront payants, sans période d'essai.</p>
               <div className="billing-status"><span className="billing-status-dot" /><div><strong>Abonnements en préparation</strong><small>Aucun forfait n'est actuellement souscrit et aucun paiement n'est activé.</small></div></div>
@@ -464,6 +466,7 @@ export default function App() {
                     <div className="message-body">
                       <p>{message.content}</p>
                       {message.role === 'assistant' && <button className="copy-message" type="button" onClick={() => copyMessage(message.content, index)} aria-label="Copier la réponse" title="Copier la réponse">{copiedMessageIndex === index ? '✓ Copié' : '⧉ Copier'}</button>}
+                      {message.role === 'assistant' && typeof message.tokensUsed === 'number' && <small className="token-usage-note">≈ {message.tokensUsed.toLocaleString('fr-FR')} jetons utilisés pour cet échange</small>}
                     </div>
                   </article>
                 ))}
