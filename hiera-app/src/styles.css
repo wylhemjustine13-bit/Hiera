@@ -664,3 +664,21 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 /* Token usage transparency */
 .token-usage-note{display:block;margin-top:6px;color:#a99ab9;font-size:10px;line-height:1.4}
 :root[data-theme="light"] .token-usage-note{color:#756982}
+
+
+/* Subscription selection and checkout preview */
+.billing-checkout-intro,.billing-checkout-panel{padding:15px;border:1px solid #8c70b544;border-radius:13px;background:linear-gradient(145deg,#21143a99,#100b20cc)}
+.billing-checkout-intro strong,.billing-checkout-panel strong{display:block;color:#f2eaff;font-size:13px}
+.billing-checkout-intro p,.billing-checkout-panel p{margin:6px 0 0;color:#b9accb;font-size:11px;line-height:1.55}
+.billing-select-button{width:100%;margin-top:8px;padding:10px 12px;border:1px solid #a77be0;border-radius:9px;background:#8b55d8;color:#fff;font-size:11px;font-weight:650;cursor:pointer}
+.billing-select-button:hover{background:#9b68e5}
+.billing-checkout-panel{display:flex;flex-direction:column;gap:8px;border-color:#a77be077}
+.billing-checkout-panel>div{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.billing-checkout-panel .billing-checkout-kicker{width:100%;color:#c2a8e5;font-size:9px;letter-spacing:.8px}
+.billing-checkout-panel b{color:#e6d6ff;font-size:13px}
+.billing-checkout-panel .billing-select-button{max-width:180px;background:transparent;color:#e4d1ff}
+:root[data-theme="light"] .billing-checkout-intro,:root[data-theme="light"] .billing-checkout-panel{background:#fff;border-color:#e0d0f2}
+:root[data-theme="light"] .billing-checkout-intro strong,:root[data-theme="light"] .billing-checkout-panel strong{color:#39244f}
+:root[data-theme="light"] .billing-checkout-intro p,:root[data-theme="light"] .billing-checkout-panel p{color:#6d6078}
+:root[data-theme="light"] .billing-checkout-panel b{color:#563875}
+:root[data-theme="light"] .billing-checkout-panel .billing-select-button{color:#654b7c}
