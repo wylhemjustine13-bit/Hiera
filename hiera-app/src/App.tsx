@@ -85,6 +85,7 @@ export default function App() {
   const [activeCompanionId, setActiveCompanionId] = useState(() => localStorage.getItem('hiera-companion') || 'hiera');
   const activeCompanion = companions.find((item) => item.id === activeCompanionId) || companions[0];
   const [busy, setBusy] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const chatAbortRef = useRef<AbortController | null>(null);
   const [speechActive, setSpeechActive] = useState(false);
   const [writingOpen, setWritingOpen] = useState(false);
@@ -728,6 +729,7 @@ export default function App() {
     if (includedAttachments.length) { includedAttachments.forEach((item) => { if (item.previewUrl) URL.revokeObjectURL(item.previewUrl); }); setAttachments([]); setPreviewAttachment(null); }
     setError('');
     setBusy(true);
+    setAnalyzing(includedAttachments.length > 0);
     if (fromVoice) setVoiceStatus('Hiera prépare sa réponse…');
     const controller = new AbortController();
     chatAbortRef.current = controller;
@@ -769,6 +771,7 @@ export default function App() {
       if (chatAbortRef.current === controller) chatAbortRef.current = null;
       busyRef.current = false;
       setBusy(false);
+      setAnalyzing(false);
     }
   }
 
@@ -1113,7 +1116,7 @@ export default function App() {
               <input ref={attachmentInputRef} className="attachment-input" type="file" accept=".pdf,.docx,.xlsx,.xls,.pptx,.txt,.md,.csv,.json,application/pdf,text/plain,text/markdown,text/csv,application/json" multiple onChange={(event) => { void addAttachments(event.target.files); event.currentTarget.value = ''; }} />
               <input ref={photoInputRef} className="attachment-input" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => { void addAttachments(event.target.files); event.currentTarget.value = ''; }} />
               {attachments.length > 0 && <div className="attachment-list">{attachments.map((item) => <div className="attachment-chip" key={item.id}>{item.dataUrl ? <img src={item.dataUrl} alt={item.name} /> : <button type="button" className="attachment-open" onClick={() => setPreviewAttachment(item)} title={`Ouvrir ${item.name}`}><span className="attachment-file-icon">▤</span><span title={item.name}>{item.name}</span></button>}<button type="button" onClick={() => removeAttachment(item.id)} aria-label={`Retirer ${item.name}`}>×</button></div>)}</div>}
-              <div className="composer-companion-stage"><Companion3D id={activeCompanion.id} name={activeCompanion.name} activity={speechActive ? 'speaking' : liveVoice ? 'listening' : busy ? 'thinking' : draft.trim() ? 'typing' : 'idle'} /></div>
+              <div className="composer-companion-stage"><Companion3D id={activeCompanion.id} name={activeCompanion.name} activity={speechActive ? 'speaking' : liveVoice ? 'listening' : analyzing ? 'analyzing' : busy ? 'thinking' : draft.trim() ? 'typing' : 'idle'} /></div>
               <div className="composer-input-row">
                 <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { const enterBehavior = settingsValues.enterBehavior || (settingsValues.enterToSend === false ? 'newline' : 'send'); if (event.key === "Enter" && !event.shiftKey && enterBehavior === 'send') { event.preventDefault(); (event.currentTarget.form as HTMLFormElement)?.requestSubmit(); } }} placeholder={`Écris un message à ${activeCompanion.name}…`} rows={1} aria-label="Message à Hiera" disabled={busy} />
                 <div className="composer-actions">{busy && <button type="button" className="copy-message stop-generation" onClick={stopGeneration}>■ Arrêter Hiera</button>}{speechActive && <button type="button" className="copy-message stop-generation" onClick={stopSpeech}>■ Arrêter le vocal</button>}<div className="attachment-menu-wrap" ref={attachmentMenuWrapRef}><button type="button" className="attach-toggle" onClick={toggleAttachmentMenu} disabled={busy} aria-label="Ouvrir les pièces jointes" aria-expanded={attachmentMenuOpen} title="Ajouter une pièce jointe">＋</button>{attachmentMenuOpen && <div className="attachment-menu" role="menu" style={{ left: attachmentMenuPosition.left, top: attachmentMenuPosition.top }}><button type="button" role="menuitem" onClick={() => { setAttachmentMenuOpen(false); photoInputRef.current?.click(); }}><span className="attachment-menu-icon">▧</span><span><strong>Photo</strong><small>JPG, PNG, WebP</small></span></button><button type="button" role="menuitem" onClick={() => { setAttachmentMenuOpen(false); attachmentInputRef.current?.click(); }}><span className="attachment-menu-icon">▤</span><span><strong>Fichier</strong><small>PDF, Word, Excel, PowerPoint, TXT…</small></span></button></div>}</div><button type="button" className={liveVoice ? 'voice-toggle active' : 'voice-toggle'} onClick={liveVoice ? stopLiveVoice : startLiveVoice} aria-label={liveVoice ? 'Arrêter la conversation vocale' : 'Démarrer la conversation vocale'}>{liveVoice ? '■' : <svg className="voice-mic-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5 10.5v1.5a7 7 0 0 0 14 0v-1.5M12 19v3M8 22h8"/></svg>}</button><button type="submit" disabled={(!draft.trim() && !attachments.length) || busy} aria-label="Envoyer le message">{busy ? '…' : '↑'}</button></div>
