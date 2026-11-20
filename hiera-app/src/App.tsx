@@ -729,7 +729,7 @@ export default function App() {
     if (includedAttachments.length) { includedAttachments.forEach((item) => { if (item.previewUrl) URL.revokeObjectURL(item.previewUrl); }); setAttachments([]); setPreviewAttachment(null); }
     setError('');
     setBusy(true);
-    setAnalyzing(includedAttachments.length > 0);
+    setAnalyzing(includedAttachments.length > 0 || /\\b(analyse|analyser|étudie|étudier|examine|examiner|compare|comparer)\\b/i.test(clean));
     if (fromVoice) setVoiceStatus('Hiera prépare sa réponse…');
     const controller = new AbortController();
     chatAbortRef.current = controller;
