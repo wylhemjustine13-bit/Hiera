@@ -148,3 +148,43 @@ img,video,iframe{max-width:100%}
 .public-seo-grid p{margin:0;color:#bdb5cc;font-size:14px;line-height:1.7}
 .public-seo-footer{text-align:center;margin:26px 0 0;color:#cbbaff;font-weight:650}
 @media(max-width:650px){.auth-screen{padding:22px 14px 40px!important;gap:26px!important}.public-seo-content{padding:28px 18px;border-radius:20px}.public-seo-grid{grid-template-columns:1fr;gap:10px;margin:24px 0}.public-seo-lead{font-size:14px}}
+
+
+/* Fond anime subtil pour la vitrine publique Hiera */
+.auth-screen{
+  position:relative;
+  isolation:isolate;
+  background-color:#0b0815!important;
+  background-image:
+    radial-gradient(ellipse at 15% 20%,rgba(111,67,214,.24),transparent 38%),
+    radial-gradient(ellipse at 85% 35%,rgba(34,120,210,.18),transparent 36%),
+    radial-gradient(ellipse at 50% 100%,rgba(148,72,220,.16),transparent 42%),
+    linear-gradient(135deg,#0b0815 0%,#100c20 48%,#090d19 100%)!important;
+  background-size:150% 150%!important;
+  animation:hiera-ambient-drift 22s ease-in-out infinite alternate;
+}
+.auth-screen::before{
+  content:"";
+  position:fixed;
+  inset:-20%;
+  z-index:-1;
+  pointer-events:none;
+  opacity:.28;
+  background:
+    radial-gradient(circle at 25% 35%,rgba(173,130,255,.2) 0 1px,transparent 2px),
+    radial-gradient(circle at 70% 65%,rgba(92,184,255,.22) 0 1px,transparent 2px);
+  background-size:82px 82px,117px 117px;
+  animation:hiera-particles-drift 38s linear infinite;
+}
+@keyframes hiera-ambient-drift{
+  0%{background-position:0% 20%}
+  50%{background-position:75% 55%}
+  100%{background-position:100% 85%}
+}
+@keyframes hiera-particles-drift{
+  from{transform:translate3d(0,0,0)}
+  to{transform:translate3d(42px,-34px,0)}
+}
+@media(prefers-reduced-motion:reduce){
+  .auth-screen,.auth-screen::before{animation:none!important}
+}
