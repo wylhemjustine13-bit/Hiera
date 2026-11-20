@@ -294,3 +294,33 @@ button{cursor:pointer}
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}
 }
+
+
+/* Composer compact — barre d'écriture plus fine */
+.composer{
+  max-width:880px!important;
+  margin:8px auto 4px!important;
+  padding:9px 13px 8px!important;
+  border-radius:16px!important;
+}
+.composer textarea{
+  min-height:32px!important;
+  max-height:130px!important;
+  padding:5px 4px!important;
+  line-height:1.45!important;
+  font-size:13px!important;
+}
+.composer-footer{
+  padding-top:7px!important;
+  min-height:37px!important;
+}
+.composer-actions>button,.attach-toggle,.voice-toggle{
+  width:34px!important;height:34px!important;border-radius:10px!important;
+}
+.composer-footer>span{font-size:9px!important}
+@media(max-width:760px){
+  .composer{padding:7px 10px 7px!important;margin:5px auto 3px!important}
+  .composer textarea{min-height:29px!important;max-height:105px!important;font-size:12px!important}
+  .composer-footer{padding-top:6px!important;min-height:34px!important}
+  .composer-actions>button,.attach-toggle,.voice-toggle{width:32px!important;height:32px!important}
+}
