@@ -51,3 +51,85 @@
 /* Descendre légèrement la barre vers le bas de la fenêtre */
 .composer{transform:translateY(12px)!important}
 @media(max-width:760px){.composer{transform:translateY(8px)!important}}
+
+
+/* Adaptation complète : ordinateur, tablette et téléphone */
+.shell,.workspace,.workspace-content,.chat-layout,.chat-column,.conversation{min-width:0}
+.workspace{width:100%;max-width:none}
+.workspace-content{width:100%;min-width:0;flex:1;display:flex;flex-direction:column}
+.chat-layout{width:100%;min-width:0;flex:1;display:flex;justify-content:center}
+.chat-column{width:100%;max-width:1050px;min-width:0;min-height:0;display:flex;flex-direction:column;flex:1}
+.conversation{width:100%;min-width:0}
+.messages,.message-body{min-width:0;overflow-wrap:anywhere}
+.message-body img,.message-body pre,.message-body table{max-width:100%;overflow-x:auto}
+.settings-page,.settings-detail,.settings-feature-card{min-width:0;max-width:100%}
+.settings-feature-card p,.settings-description{overflow-wrap:anywhere}
+.admin-panel,.writing-panel,.document-panel{width:min(100%,980px);max-height:calc(100dvh - 32px);overflow:auto}
+img,video,iframe{max-width:100%}
+
+@media(max-width:1100px){
+  .workspace{padding-left:22px;padding-right:22px}
+  .shell{grid-template-columns:230px minmax(0,1fr)}
+  .sidebar{padding-left:14px;padding-right:14px}
+  .quick-prompts{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .topbar{gap:8px}
+  .plan-badge,.private-toggle,.fullscreen-toggle{font-size:11px}
+}
+@media(max-width:760px){
+  .shell{display:grid!important;grid-template-columns:minmax(0,1fr)!important;width:100%;height:100dvh;min-height:0}
+  .shell>.sidebar{position:fixed;left:0;top:0;bottom:0;width:min(84vw,300px);height:100dvh;min-width:0;padding:20px 15px;display:flex;flex-direction:column;overflow-y:auto;z-index:50}
+  .sidebar-collapsed>.sidebar{transform:translateX(-105%);opacity:0;pointer-events:none}
+  .sidebar-dismiss-zone{position:fixed;inset:0;background:#08051299;border:0;z-index:40}
+  .workspace{grid-column:1;width:100%;height:100dvh;min-height:0;padding:0 12px 10px;overflow:hidden}
+  .topbar{height:auto;min-height:52px;flex-wrap:wrap;gap:7px;padding:7px 0}
+  .mobile-menu-button{width:34px;height:34px;flex:none}
+  .topbar-title{font-size:12px;flex:1;min-width:60px}
+  .companion-picker{max-width:45%;min-width:0}
+  .companion-picker select{max-width:100%;min-width:0}
+  .admin-open-button{max-width:130px;overflow:hidden;text-overflow:ellipsis}
+  .workspace-content{min-height:0}
+  .chat-layout,.chat-column{min-height:0}
+  .conversation{min-height:0;overflow-y:auto}
+  .message{max-width:96%;font-size:13px}
+  .settings-page{padding:16px 0 28px;max-height:calc(100dvh - 62px);overflow-y:auto}
+  .settings-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .settings-shortcuts button{min-height:90px}
+  .integration-grid,.integration-list,.privacy-list{grid-template-columns:minmax(0,1fr)}
+  .composer{width:100%;max-width:100%}
+  .disclaimer{font-size:9px}
+}
+@media(max-width:480px){
+  .workspace{padding-left:9px;padding-right:9px}
+  .topbar{gap:5px}
+  .topbar-title{font-size:11px}
+  .companion-picker{max-width:42%}
+  .plan-badge{padding:4px 6px;font-size:9px}
+  .private-toggle{padding:5px 7px;font-size:10px}
+  .fullscreen-toggle{padding:6px 7px}
+  .quick-prompts{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .quick-prompts button{min-height:78px;padding:9px 5px;font-size:10px}
+  .compact-welcome h1{font-size:30px}
+  .compact-welcome .subtitle{font-size:11px}
+  .message{max-width:100%;gap:6px;font-size:12px}
+  .message p{padding:10px 12px}
+  .composer{padding:4px 6px!important}
+  .composer-input-row{gap:4px}
+  .composer-input-row textarea{font-size:12px!important;min-height:28px!important}
+  .composer-input-row .composer-actions{gap:3px}
+  .composer-input-row .composer-actions>button,.composer-input-row .attach-toggle,.composer-input-row .voice-toggle{width:27px!important;height:27px!important;min-width:27px}
+  .stop-generation{max-width:70px;overflow:hidden;font-size:9px}
+  .settings-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .settings-shortcuts button{padding:10px;min-height:82px}
+  .settings-page h1{font-size:27px}
+  .settings-feature-card{padding:12px}
+  .writing-toolbar{flex-wrap:wrap}
+  .writing-footer{flex-wrap:wrap;gap:6px}
+  .admin-panel{padding:12px}
+}
+@media(max-width:350px){
+  .workspace{padding-left:6px;padding-right:6px}
+  .topbar-title{display:none}
+  .companion-picker{max-width:38%}
+  .quick-prompts button{font-size:9px}
+  .composer-input-row .composer-actions>button,.composer-input-row .attach-toggle,.composer-input-row .voice-toggle{width:25px!important;height:25px!important;min-width:25px}
+}
