@@ -392,6 +392,18 @@ export default function App() {
     } catch (err) { setAdminActionStatus(err instanceof Error ? err.message : 'Modification impossible.'); }
   }
 
+  async function deleteAdminAccount(userId: string, email: string) {
+    if (!window.confirm(`Supprimer définitivement le compte ${email} et ses données associées ? Cette action est irréversible.`)) return;
+    setAdminActionStatus('');
+    try {
+      const response = await fetch('/api/admin/account/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Suppression impossible.');
+      setAdminActionStatus('Compte et données associées supprimés.');
+      await refreshAdminData();
+    } catch (err) { setAdminActionStatus(err instanceof Error ? err.message : 'Suppression impossible.'); }
+  }
+
   async function resolveResetRequest(id: number) {
     try {
       const response = await fetch('/api/admin/reset-request/resolve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
@@ -912,7 +924,8 @@ export default function App() {
                 <div className="admin-user-identity"><strong>{item.name || 'Sans nom'} {item.safetyFlagCount > 0 && <span className="admin-alert-pill">À vérifier · {item.safetyFlagCount}</span>}</strong><small>{item.email}</small><time>Activité : {item.lastSeenAt ? new Date(item.lastSeenAt).toLocaleString('fr-FR') : 'Non disponible'}</time></div>
                 <div className="admin-user-controls"><select aria-label={'Forfait de ' + item.email} value={item.plan || 'basic'} onChange={(event) => updateAdminAccount(item.userId, { plan: event.target.value })}><option value="basic">Basic</option><option value="plus">Plus</option><option value="pro">Pro</option><option value="ultimate">Ultime</option></select>
                   <button type="button" className="admin-help-button" onClick={() => item.helpStatus === 'approved' ? openSharedHelp(Number(item.helpRequestId)) : requestHelpAccess(item.userId)} disabled={item.helpStatus === 'pending'}>{item.helpStatus === 'pending' ? 'Demande envoyée' : item.helpStatus === 'approved' ? 'Voir l’aide' : 'Aide'}</button>
-                  <button type="button" className={item.banned ? 'admin-reactivate' : 'admin-ban'} onClick={() => updateAdminAccount(item.userId, { banned: !item.banned })}>{item.banned ? 'Réactiver' : 'Suspendre'}</button><span className={item.banned ? 'admin-status-banned' : 'admin-status-active'}>{item.banned ? 'Suspendu' : 'Actif'}</span></div>
+                  <button type="button" className={item.banned ? 'admin-reactivate' : 'admin-ban'} onClick={() => updateAdminAccount(item.userId, { banned: !item.banned })}>{item.banned ? 'Réactiver' : 'Suspendre'}</button><span className={item.banned ? 'admin-status-banned' : 'admin-status-active'}>{item.banned ? 'Suspendu' : 'Actif'}</span>
+                  {item.email?.toLowerCase() !== String(adminData.email || '').toLowerCase() && <button type="button" className="admin-delete-button" onClick={() => deleteAdminAccount(item.userId, item.email)}>Supprimer</button>}</div>
               </article>)}
               {!(adminData.users || []).length && <p>Aucun compte enregistré pour le moment.</p>}
             </div></section>
