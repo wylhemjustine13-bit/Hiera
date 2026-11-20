@@ -1165,3 +1165,48 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 :root[data-theme="light"] .public-seo-grid article{background:#fff;border-color:#d8c4f2}
 :root[data-theme="light"] .public-seo-grid h2{color:#39244f}
 @media(max-width:600px){.auth-screen{justify-content:flex-start;padding:22px 14px;gap:28px}.public-seo-content{padding:0}.public-seo-grid{grid-template-columns:1fr}.public-seo-lead{font-size:13px}.public-seo-grid article{padding:16px}}
+
+
+/* Correctif défilement : seule la liste des messages défile, le champ reste fixe */
+.chat-layout{
+  display:flex;
+  flex:1 1 0;
+  min-width:0;
+  min-height:0;
+  width:100%;
+  overflow:hidden;
+}
+.chat-column{
+  display:flex;
+  flex:1 1 0;
+  flex-direction:column;
+  min-width:0;
+  min-height:0;
+  overflow:hidden;
+}
+.conversation{
+  display:flex;
+  flex:1 1 0;
+  flex-direction:column;
+  min-width:0;
+  min-height:0;
+  max-height:none;
+  overflow:hidden;
+}
+.messages{
+  display:flex;
+  flex:1 1 0;
+  flex-direction:column;
+  min-width:0;
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  touch-action:pan-y;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+  scrollbar-gutter:stable;
+}
+@media(max-width:760px){
+  .chat-layout,.chat-column,.conversation{min-height:0;height:auto}
+  .messages{min-height:0;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+}
