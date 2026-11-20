@@ -129,6 +129,11 @@ export default function App() {
   const [sharedHelp, setSharedHelp] = useState<any>(null);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [developerMode, setDeveloperMode] = useState(() => localStorage.getItem('hiera-developer-mode') === 'true');
+  const [developerOpen, setDeveloperOpen] = useState(false);
+  const [developerTab, setDeveloperTab] = useState('overview');
+  const [developerNotice, setDeveloperNotice] = useState('');
+  const brandTapRef = useRef({ count: 0, lastTap: 0 });
   const [learningOpen, setLearningOpen] = useState(false);
   const [learningTopic, setLearningTopic] = useState('');
   const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
@@ -162,6 +167,24 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(() => !window.matchMedia("(max-width: 760px)").matches);
   const googleButtonRef = useRef<HTMLDivElement>(null);
   function updateSetting(key: string, value: any) { setSettingsValues((current) => ({ ...current, [key]: value })); }
+  useEffect(() => { localStorage.setItem('hiera-developer-mode', String(developerMode)); }, [developerMode]);
+  function handleBrandTap() {
+    const now = Date.now();
+    if (now - brandTapRef.current.lastTap > 2500) brandTapRef.current.count = 0;
+    brandTapRef.current.lastTap = now;
+    brandTapRef.current.count += 1;
+    if (brandTapRef.current.count >= 7) {
+      brandTapRef.current.count = 0;
+      setDeveloperMode(true);
+      setDeveloperOpen(true);
+      setDeveloperTab('overview');
+      setSettingsOpen(false);
+      setLearningOpen(false);
+      setDeveloperNotice('Hiera Developer Studio est déverrouillé sur cet appareil.');
+      window.setTimeout(() => setDeveloperNotice(''), 3500);
+    }
+    setSidebarOpen((open) => !open);
+  }
   function persistConversation(items: Message[], id = currentConversationId) {
     if (privateMode || !items.length || settingsValues.saveHistory === false) return;
     const first = items.find((item) => item.role === 'user')?.content || 'Nouvelle conversation';
@@ -875,7 +898,7 @@ export default function App() {
   return (
     <main className={`shell ${sidebarOpen ? "" : "sidebar-collapsed"}`}>
       <aside className="sidebar">
-        <div className="sidebar-top"><button className="brand" onClick={() => setSidebarOpen((open) => !open)} aria-label="Rétracter ou afficher la barre latérale"><AtomLogo /><div><span>Hiera</span><small>Votre IA, toujours avec vous</small></div></button>
+        <div className="sidebar-top"><button className="brand" onClick={handleBrandTap} aria-label="Rétracter ou afficher la barre latérale"><AtomLogo /><div><span>Hiera</span><small>Votre IA, toujours avec vous</small></div></button>
         <button className="new-chat" onClick={newConversation} disabled={busy}><span aria-hidden="true">＋</span> Nouvelle conversation</button></div>
         <div className="sidebar-navigation">
         <div className="sidebar-nav-group">
@@ -914,6 +937,19 @@ export default function App() {
         </header>
 
         <div className="workspace-content">
+        {developerNotice && <div className="developer-toast" role="status">✦ {developerNotice}</div>}
+        {developerOpen && developerMode && <div className="developer-overlay" role="dialog" aria-modal="true" aria-label="Hiera Developer Studio"><section className="developer-panel">
+          <header className="developer-header"><div><span className="developer-kicker">ENVIRONNEMENT AVANCÉ</span><h2>Hiera Developer Studio</h2><p>Personnalisation et outils expérimentaux</p></div><button type="button" onClick={() => setDeveloperOpen(false)} aria-label="Fermer le studio développeur">×</button></header>
+          <nav className="developer-tabs" aria-label="Sections développeur">{[['overview','Vue d’ensemble','⌂'],['avatars','Avatars 3D','◉'],['interface','Interface','✧'],['companions','Compagnons','♙'],['apis','API & connexions','⌘'],['tools','Diagnostic','⚙']].map(([id,label,icon]) => <button type="button" key={id} className={developerTab === id ? 'active' : ''} onClick={() => setDeveloperTab(id)}><span>{icon}</span>{label}</button>)}</nav>
+          <div className="developer-content">
+            {developerTab === 'overview' && <><div className="developer-welcome"><span className="developer-orb">✦</span><div><strong>Bienvenue dans l’atelier de Hiera</strong><p>Les réglages sont enregistrés sur cet appareil. Les changements expérimentaux peuvent être réinitialisés.</p></div></div><div className="developer-card-grid"><article><span>◉</span><strong>Avatars 3D</strong><small>Préparer l’apparence, les couleurs et les animations.</small></article><article><span>✧</span><strong>Interface</strong><small>Personnaliser le thème et l’identité visuelle.</small></article><article><span>♙</span><strong>Compagnons</strong><small>Configurer les profils et les personnalités.</small></article><article><span>⌘</span><strong>Intégrations</strong><small>Organiser les fournisseurs et les connexions API.</small></article></div><p className="developer-security-note">🔒 L’activation cachée ne donne aucun droit administrateur. Les API et secrets restent protégés côté serveur.</p></>}
+            {developerTab === 'avatars' && <div className="developer-settings-grid"><div className="developer-feature"><strong>Compagnon à personnaliser</strong><p>Choisis le compagnon dont tu veux préparer la personnalisation.</p><select value={settingsValues.devSelectedCompanion || activeCompanionId} onChange={(e) => updateSetting('devSelectedCompanion',e.target.value)}>{companions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div><div className="developer-feature"><strong>Style visuel souhaité</strong><p>Enregistre un style de référence pour la prochaine étape du moteur d’avatar.</p><select value={settingsValues.devAvatarStyle || 'robot'} onChange={(e) => updateSetting('devAvatarStyle',e.target.value)}><option value="robot">Robot 3D</option><option value="realistic">Humanoïde réaliste</option><option value="toon">Toon 3D</option><option value="hologram">Hologramme</option></select></div><div className="developer-feature"><strong>Couleur principale</strong><p>Couleur de référence pour le prochain système de matériaux 3D.</p><input type="color" value={settingsValues.devAvatarColor || '#9b65ff'} onChange={(e) => updateSetting('devAvatarColor',e.target.value)} /></div><div className="developer-feature"><strong>Animations</strong><p>Préférences pour les animations du compagnon.</p><select value={settingsValues.devAvatarMotion || 'normal'} onChange={(e) => updateSetting('devAvatarMotion',e.target.value)}><option value="reduced">Réduites</option><option value="normal">Naturelles</option><option value="expressive">Expressives</option></select></div><p className="developer-security-note">Ces préférences sont enregistrées. Leur application directe au modèle 3D nécessitera le raccordement du moteur d’avatar à ces paramètres.</p></div>}
+            {developerTab === 'interface' && <div className="developer-settings-grid"><div className="developer-feature"><strong>Thème de Hiera</strong><p>Changer immédiatement l’apparence générale.</p><select value={settingsValues.theme || 'dark'} onChange={(e) => updateSetting('theme',e.target.value)}><option value="dark">Sombre violet</option><option value="light">Clair</option></select></div><div className="developer-feature"><strong>Nom affiché de l’assistant</strong><p>Nom transmis au modèle pour les prochaines réponses.</p><input maxLength={40} value={settingsValues.assistantName || 'Hiera'} onChange={(e) => updateSetting('assistantName',e.target.value)} /></div><div className="developer-feature"><strong>Style des réponses</strong><p>Définit le ton des prochaines conversations.</p><select value={settingsValues.replyStyle || 'friendly'} onChange={(e) => updateSetting('replyStyle',e.target.value)}><option value="friendly">Naturel et amical</option><option value="concise">Concis</option><option value="detailed">Détaillé</option></select></div></div>}
+            {developerTab === 'companions' && <div className="developer-settings-grid"><div className="developer-feature"><strong>Compagnon actif</strong><p>Changer le compagnon utilisé dans la conversation.</p><select value={activeCompanionId} onChange={(e) => setActiveCompanionId(e.target.value)}>{companions.map((item) => <option key={item.id} value={item.id}>{item.name} — {item.role}</option>)}</select></div><div className="developer-feature"><strong>Profil de personnalité</strong><p>Choisis une orientation pour les prochaines réponses.</p><select value={settingsValues.devPersonality || 'balanced'} onChange={(e) => updateSetting('devPersonality',e.target.value)}><option value="balanced">Équilibrée</option><option value="creative">Créative</option><option value="technical">Technique</option><option value="teacher">Pédagogue</option></select></div><p className="developer-security-note">La création de nouveaux compagnons sera ajoutée lorsque le système de profils personnalisés sera prêt.</p></div>}
+            {developerTab === 'apis' && <div className="developer-settings-grid"><div className="developer-feature"><strong>Fournisseur IA actuel</strong><p>Le modèle actuellement sélectionné dans Hiera.</p><select value={model} onChange={(e) => setModel(e.target.value)}><option value="groq:openai/gpt-oss-20b">GPT-OSS 20B · Groq</option><option value="groq:openai/gpt-oss-120b">GPT-OSS 120B · Groq</option></select></div><div className="developer-feature"><strong>Ajouter une API externe</strong><p>Les clés API ne doivent pas être saisies ni conservées dans le navigateur. Elles devront être ajoutées dans les variables d’environnement privées du serveur.</p><a href="https://dashboard.render.com/web/srv-dbunvn6k1f9s73as351g" target="_blank" rel="noreferrer" className="developer-link">Ouvrir les variables privées Render ↗</a></div><p className="developer-security-note">Ne colle jamais une clé secrète dans le chat, dans le code frontend ou dans GitHub. Cette rubrique est prête à accueillir un gestionnaire de fournisseurs sécurisé côté serveur.</p></div>}
+            {developerTab === 'tools' && <div className="developer-settings-grid"><div className="developer-feature"><strong>Informations navigateur</strong><p>{navigator.userAgent}</p><small>Langue : {navigator.language} · Écran : {window.screen.width} × {window.screen.height}</small></div><div className="developer-feature"><strong>État de l’environnement</strong><p>Mode développeur activé sur cet appareil.</p><small>Compte connecté : {googleUser?.email || 'Non disponible'} · Modèle : {model}</small></div><div className="developer-feature"><strong>Réinitialiser les préférences développeur</strong><p>Efface uniquement les réglages expérimentaux de cet appareil.</p><button type="button" className="developer-danger" onClick={() => { if (!window.confirm('Réinitialiser les préférences du Developer Studio ?')) return; setSettingsValues((current) => { const next = {...current}; Object.keys(next).filter((key) => key.startsWith('dev')).forEach((key) => delete next[key]); return next; }); }}>Réinitialiser</button></div></div>}
+          </div><footer className="developer-footer"><span>Hiera Developer Studio · Préférences locales</span><button type="button" onClick={() => { setDeveloperOpen(false); setDeveloperMode(false); setDeveloperNotice('Mode développeur désactivé.'); window.setTimeout(() => setDeveloperNotice(''),2500); }}>Désactiver le mode développeur</button></footer>
+        </section></div>}
         {adminPanel && adminData && <div className="admin-overlay" role="dialog" aria-modal="true" aria-label="Hiera Control">
           <section className="admin-panel">
             <header className="admin-panel-header"><div><span className="admin-kicker">ESPACE ADMINISTRATEUR</span><h2>Hiera Control</h2><small>Connecté : {adminData.email} · Actualisation automatique</small></div><button type="button" onClick={() => setAdminPanel(false)} aria-label="Fermer Hiera Control">×</button></header>
