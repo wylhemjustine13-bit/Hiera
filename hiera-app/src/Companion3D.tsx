@@ -10,7 +10,7 @@ const palette: Record<string, { glow: string; armor: string; face: string; trim:
   atlas: { glow: '#ffc45d', armor: '#70502b', face: '#ffe6bd', trim: '#ffdb8b' },
 };
 
-export default function Companion3D({ id, name }: { id: string; name: string }) {
+export default function Companion3D({ id, name, activity = 'idle' }: { id: string; name: string; activity?: 'idle' | 'typing' | 'thinking' | 'speaking' | 'listening' }) {
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -108,13 +108,21 @@ export default function Companion3D({ id, name }: { id: string; name: string }) 
     const animate = () => {
       frame = requestAnimationFrame(animate);
       const t = clock.getElapsedTime();
-      robot.position.y = Math.sin(t * 1.55) * 0.055;
-      robot.rotation.y = Math.sin(t * 0.7) * 0.17;
-      robot.rotation.x = Math.sin(t * 0.9) * 0.025;
-      pods.forEach((pod, index) => { pod.rotation.y = Math.sin(t * 1.2 + index) * 0.12; });
+      const thinking = activity === 'thinking';
+      const speaking = activity === 'speaking';
+      const listening = activity === 'listening';
+      const typing = activity === 'typing';
+      const tempo = thinking ? 3.4 : speaking ? 5.2 : listening ? 2.2 : typing ? 2.8 : 1.55;
+      const energy = thinking ? 0.16 : speaking ? 0.13 : listening ? 0.1 : typing ? 0.075 : 0.055;
+      robot.position.y = Math.sin(t * tempo) * energy + (speaking ? Math.abs(Math.sin(t * 7)) * 0.035 : 0);
+      robot.rotation.y = Math.sin(t * (thinking ? 1.7 : 0.7)) * (thinking ? 0.3 : listening ? 0.23 : 0.17);
+      robot.rotation.x = Math.sin(t * (speaking ? 4.5 : 0.9)) * (speaking ? 0.09 : 0.025);
+      robot.rotation.z = listening ? Math.sin(t * 1.8) * 0.07 : typing ? Math.sin(t * 2.4) * 0.035 : 0;
+      pods.forEach((pod, index) => { pod.rotation.y = Math.sin(t * (thinking ? 3.2 : 1.2) + index) * (thinking ? 0.3 : 0.12); });
       sparks.forEach((spark, index) => {
+        const pulse = Math.sin(t * (speaking ? 8 : thinking ? 5 : listening ? 3 : 2) + index * 1.4);
         spark.position.y += Math.sin(t * 1.7 + index * 1.4) * 0.0009;
-        spark.scale.setScalar(0.88 + (Math.sin(t * 2 + index) + 1) * 0.12);
+        spark.scale.setScalar((speaking ? 1.05 : thinking ? 1 : 0.88) + (pulse + 1) * (speaking ? 0.22 : thinking ? 0.16 : 0.12));
       });
       renderer.render(scene, camera);
     };
@@ -129,7 +137,7 @@ export default function Companion3D({ id, name }: { id: string; name: string }) 
       renderer.dispose();
       if (renderer.domElement.parentNode === root) root.removeChild(renderer.domElement);
     };
-  }, [id]);
+  }, [id, activity]);
 
   return <div ref={host} className="companion-real3d" role="img" aria-label={name + ' en 3D animé'} />;
 }
