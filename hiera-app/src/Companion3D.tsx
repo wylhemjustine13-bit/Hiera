@@ -49,69 +49,50 @@ export default function Companion3D({ id, name }: { id: string; name: string }) 
       robot.add(mesh); return mesh;
     };
 
-    // New concept: compact space-explorer droid with a panoramic luminous visor
-    const trim = mat(colors.trim, 0.92, 0.12);
-    const ceramic = new THREE.MeshPhysicalMaterial({ color: colors.face, metalness: 0.26, roughness: 0.2, clearcoat: 1 });
-    const visorMat = new THREE.MeshPhysicalMaterial({ color: '#071426', metalness: 0.58, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.04 });
-    const joint = mat('#11182a', 0.7, 0.25);
+    // Crystal guardian concept: faceted silhouette, floating shards and luminous core
+    const trim = mat(colors.trim, 0.95, 0.12);
+    const crystal = new THREE.MeshPhysicalMaterial({ color: colors.face, metalness: 0.42, roughness: 0.12, clearcoat: 1, transmission: 0.08 });
+    const glass = new THREE.MeshPhysicalMaterial({ color: '#07101f', metalness: 0.52, roughness: 0.08, clearcoat: 1 });
+    const joint = mat('#111827', 0.78, 0.2);
 
-    // Compact astronaut torso with layered chest armor
-    add(new THREE.SphereGeometry(0.78, 48, 32), armor, [0, -1.04, 0], [1.08, 0.62, 0.62]);
-    add(new THREE.SphereGeometry(0.62, 40, 28), ceramic, [0, -0.98, 0.28], [0.92, 0.5, 0.44]);
-    add(new THREE.BoxGeometry(0.62, 0.34, 0.12), joint, [0, -1.02, 0.62]);
-    add(new THREE.TorusGeometry(0.18, 0.035, 12, 40), trim, [0, -1.02, 0.7]);
-    add(new THREE.SphereGeometry(0.105, 28, 20), glow, [0, -1.02, 0.72]);
-    add(new THREE.CylinderGeometry(0.22, 0.26, 0.3, 32), joint, [0, -0.57, 0]);
+    // Sculpted chest and luminous central crystal
+    add(new THREE.IcosahedronGeometry(0.72, 1), armor, [0, -1.02, 0], [1.12, 0.62, 0.65]);
+    add(new THREE.CylinderGeometry(0.24, 0.34, 0.34, 6), joint, [0, -0.58, 0]);
+    add(new THREE.OctahedronGeometry(0.27, 1), trim, [0, -1.02, 0.53]);
+    add(new THREE.OctahedronGeometry(0.15, 2), glow, [0, -1.02, 0.68]);
+    add(new THREE.BoxGeometry(0.72, 0.08, 0.12), crystal, [0, -0.78, 0.42]);
 
-    // Oversized explorer helmet with a broad curved glass faceplate
-    add(new THREE.SphereGeometry(0.68, 56, 40), ceramic, [0, 0.34, 0], [0.94, 1.0, 0.82]);
-    add(new THREE.SphereGeometry(0.52, 48, 32), armor, [0, 0.45, 0.08], [1.12, 0.9, 0.82]);
-    add(new THREE.SphereGeometry(0.45, 48, 32), visorMat, [0, 0.34, 0.56], [1.16, 0.66, 0.32]);
-    // Two expressive horizontal light eyes with a subtle center glint
-    for (const x of [-0.19, 0.19]) {
-      add(new THREE.CapsuleGeometry(0.045, 0.13, 6, 16), glow, [x, 0.38, 0.84]).rotation.z = Math.PI / 2;
-      add(new THREE.SphereGeometry(0.018, 16, 12), ceramic, [x - 0.025, 0.41, 0.865]);
+    // Angular head with a faceted crown and dark curved faceplate
+    add(new THREE.IcosahedronGeometry(0.62, 2), crystal, [0, 0.34, 0], [0.88, 1.08, 0.78]);
+    add(new THREE.IcosahedronGeometry(0.43, 2), glass, [0, 0.31, 0.46], [1.1, 0.72, 0.38]);
+    add(new THREE.ConeGeometry(0.32, 0.42, 5), armor, [0, 0.92, -0.02]);
+    add(new THREE.OctahedronGeometry(0.13, 1), glow, [0, 1.16, 0.02]);
+    for (const x of [-0.18, 0.18]) {
+      const eye = add(new THREE.SphereGeometry(0.07, 24, 18), glow, [x, 0.36, 0.78], [0.68, 1.35, 0.45]);
+      eye.rotation.z = x < 0 ? 0.12 : -0.12;
     }
-    add(new THREE.TorusGeometry(0.075, 0.009, 8, 24, Math.PI), trim, [0, 0.12, 0.86]).rotation.z = Math.PI;
+    add(new THREE.TorusGeometry(0.08, 0.012, 8, 24, Math.PI), trim, [0, 0.12, 0.82]).rotation.z = Math.PI;
 
-    // Chunky side communication pods with colored lenses
-    for (const x of [-0.69, 0.69]) {
-      const pod = add(new THREE.SphereGeometry(0.22, 32, 24), armor, [x, 0.22, 0], [0.78, 1.1, 0.82]);
-      pod.rotation.z = x < 0 ? -0.12 : 0.12;
-      add(new THREE.CylinderGeometry(0.095, 0.095, 0.08, 28), trim, [x * 1.04, 0.22, 0.13]).rotation.z = Math.PI / 2;
-      add(new THREE.SphereGeometry(0.075, 24, 18), glow, [x * 1.04, 0.22, 0.19]);
+    // Floating crystal ear pieces and asymmetric shoulder armor
+    const shards: THREE.Mesh[] = [];
+    for (const x of [-0.72, 0.72]) {
+      const ear = add(new THREE.OctahedronGeometry(0.23, 1), trim, [x, 0.22, 0.02]);
+      ear.scale.set(0.7, 1.35, 0.7);
+      const shoulder = add(new THREE.IcosahedronGeometry(0.34, 1), armor, [x * 0.94, -0.84, 0.02], [1.2, 0.8, 0.85]);
+      shoulder.rotation.z = x < 0 ? -0.22 : 0.22;
+      add(new THREE.TorusGeometry(0.11, 0.022, 8, 28), glow, [x, -0.84, 0.28]);
+      const shard = add(new THREE.OctahedronGeometry(0.16, 1), glow, [x * 1.22, -0.45, -0.05]);
+      shards.push(shard);
     }
-
-    // Twin short antenna fins and a bright navigation beacon
-    for (const x of [-0.28, 0.28]) {
-      const antenna = add(new THREE.ConeGeometry(0.105, 0.34, 6), trim, [x, 1.02, -0.02]);
-      antenna.rotation.z = x < 0 ? -0.22 : 0.22;
+    // Two orbiting crystal fragments
+    for (let i = 0; i < 3; i++) {
+      const shard = add(new THREE.OctahedronGeometry(0.09 + i * 0.018, 1), i === 1 ? trim : glow, [Math.cos(i * 2.1) * 0.95, 0.2 + i * 0.34, -0.12]);
+      shards.push(shard);
     }
-    add(new THREE.SphereGeometry(0.085, 24, 18), glow, [0, 1.18, 0.02]);
-
-    // Floating shoulder guards, layered like a tiny space suit
-    for (const x of [-0.7, 0.7]) {
-      const guard = add(new THREE.SphereGeometry(0.31, 36, 24), ceramic, [x, -0.82, 0.02], [1.18, 0.8, 0.86]);
-      guard.rotation.z = x < 0 ? -0.12 : 0.12;
-      add(new THREE.TorusGeometry(0.12, 0.025, 10, 32), glow, [x, -0.84, 0.27]);
-      add(new THREE.BoxGeometry(0.12, 0.2, 0.1), trim, [x * 1.08, -1.05, 0.2]);
-    }
-
-    // Small floating navigation rings and side thruster lights
-    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.018, 10, 72), trim);
-    halo.position.set(0, 0.18, -0.38);
-    halo.rotation.set(0.65, 0.2, 0.15);
-    robot.add(halo);
-    const halo2 = new THREE.Mesh(new THREE.TorusGeometry(0.88, 0.012, 8, 72), glow);
-    halo2.position.set(0, -0.15, -0.42);
-    halo2.rotation.set(1.2, -0.3, 0.1);
-    robot.add(halo2);
-    const thrusters: THREE.Mesh[] = [];
-    for (const x of [-0.83, 0.83]) {
-      const thruster = add(new THREE.ConeGeometry(0.07, 0.24, 20), glow, [x, -1.28, 0.08]);
-      thruster.rotation.x = Math.PI;
-      thrusters.push(thruster);
-    }
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.82, 0.014, 8, 96), glow);
+    halo.position.set(0, 0.12, -0.35); halo.rotation.set(0.8, 0.2, 0.1); robot.add(halo);
+    const halo2 = new THREE.Mesh(new THREE.TorusGeometry(0.98, 0.009, 8, 96), trim);
+    halo2.position.set(0, -0.12, -0.4); halo2.rotation.set(1.15, -0.3, 0.1); robot.add(halo2);
     const clock = new THREE.Clock();
     let frame = 0;
     let width = 0, height = 0;
@@ -130,11 +111,11 @@ export default function Companion3D({ id, name }: { id: string; name: string }) 
       robot.position.y = Math.sin(t * 1.55) * 0.055;
       robot.rotation.y = Math.sin(t * 0.7) * 0.17;
       robot.rotation.x = Math.sin(t * 0.9) * 0.025;
-      halo.rotation.y = t * 0.58;
-      halo.rotation.x = 0.65 + Math.sin(t * 0.8) * 0.1;
-      halo2.rotation.z = t * -0.42;
-      halo2.rotation.x = 1.2 + Math.sin(t * 0.65) * 0.08;
-      thrusters.forEach((jet, index) => { jet.scale.y = 0.82 + (Math.sin(t * 5 + index) + 1) * 0.24; });
+      halo.rotation.y = t * 0.62;
+      halo.rotation.x = 0.8 + Math.sin(t * 0.8) * 0.12;
+      halo2.rotation.z = t * -0.46;
+      halo2.rotation.x = 1.15 + Math.sin(t * 0.65) * 0.1;
+      shards.forEach((shard, index) => { shard.rotation.x = t * (0.45 + index * 0.08); shard.rotation.y = t * (0.6 + index * 0.06); shard.position.y += Math.sin(t * 1.8 + index) * 0.0008; });
       renderer.render(scene, camera);
     };
     animate();
