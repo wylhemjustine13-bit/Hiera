@@ -185,3 +185,28 @@ img,video,iframe{max-width:100%}
 @keyframes hiera-star-drift{from{background-position:0 0,0 0,0 0,0 0}to{background-position:0 0,0 0,0 0,116px -116px}}
 @keyframes hiera-light-sweep{0%{background-position:120% 0}100%{background-position:-120% 0}}
 @media(prefers-reduced-motion:reduce){.auth-screen,.shell,.auth-screen::before,.shell::before,.auth-screen::after,.shell::after{animation:none!important}}
+
+
+/* Barre latérale repliée : supprimer aussi sa colonne réservée sur ordinateur */
+@media(min-width:761px){
+  .shell.sidebar-collapsed{
+    grid-template-columns:0 minmax(0,1fr)!important;
+    column-gap:0!important;
+  }
+  .shell.sidebar-collapsed>.sidebar{
+    width:0!important;
+    min-width:0!important;
+    max-width:0!important;
+    padding:0!important;
+    margin:0!important;
+    border:0!important;
+    overflow:hidden!important;
+    opacity:0!important;
+    pointer-events:none!important;
+  }
+  .shell.sidebar-collapsed>.workspace{
+    grid-column:2!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+}
