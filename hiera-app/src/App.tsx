@@ -399,6 +399,7 @@ export default function App() {
       const response = await fetch('/api/admin/account/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Suppression impossible.');
+      setAdminData((current: any) => current ? { ...current, users: (current.users || []).filter((item: any) => item.userId !== userId), stats: { ...current.stats, emailAccounts: Math.max(0, Number(current.stats?.emailAccounts || 0) - 1) } } : current);
       setAdminActionStatus('Compte et données associées supprimés.');
       await refreshAdminData();
     } catch (err) { setAdminActionStatus(err instanceof Error ? err.message : 'Suppression impossible.'); }
