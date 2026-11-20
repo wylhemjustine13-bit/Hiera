@@ -834,7 +834,6 @@ export default function App() {
           <div className="side-label">ESPACE DE TRAVAIL</div>
           <nav className="sidebar-primary-nav" aria-label="Espace de travail">
             <button type="button" className={`side-link ${!settingsOpen && !learningOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(false); setLearningOpen(false); }}><span>◉</span><b>Discuter</b></button>
-            <button type="button" className={`side-link ${learningOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(false); setLearningOpen(true); if (window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false); }}><span>☷</span><b>Apprendre</b></button>
           </nav>
         </div>
         <div className="sidebar-nav-group">
