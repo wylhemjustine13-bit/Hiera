@@ -242,3 +242,17 @@ img,video,iframe{max-width:100%}
 @keyframes companion-pulse{0%,100%{opacity:.72}50%{opacity:1}}
 @media(max-width:650px){.companion-card .companion-bust{height:150px}.companion-bust.is-compact{height:175px;width:min(190px,58%)}}
 @media(prefers-reduced-motion:reduce){.companion-bust svg,.companion-bust .bust-accessory{animation:none!important}}
+
+
+/* Compagnon 3D flottant au niveau de la barre de saisie */
+.composer{position:relative!important;overflow:visible!important}
+.composer-companion-stage{position:absolute;left:10px;bottom:15px;width:92px;height:116px;z-index:5;pointer-events:none;perspective:700px;display:flex;align-items:flex-end;justify-content:center}
+.composer-companion-stage .companion-bust.is-compact{width:100%;height:116px;margin:0;border-radius:0;background:transparent;overflow:visible;transform-style:preserve-3d;transform:rotateY(-9deg) rotateX(2deg)}
+.composer-companion-stage .companion-bust svg{width:100%;height:100%;filter:drop-shadow(0 8px 5px rgba(0,0,0,.38)) drop-shadow(0 0 14px var(--glow));transform-style:preserve-3d;animation:composer-companion-hover 3.8s ease-in-out infinite}
+.composer-companion-stage .companion-bust .bust-aura{opacity:.32;filter:blur(12px)}
+.composer-companion-stage .companion-bust .bust-shoulders{stroke-width:3;filter:drop-shadow(2px 2px 0 rgba(255,255,255,.12))}
+.composer-companion-stage .companion-bust .bust-accessory{filter:drop-shadow(0 0 7px var(--glow))}
+.composer-input-row textarea{padding-left:88px!important}
+@keyframes composer-companion-hover{0%,100%{transform:translate3d(0,2px,0) rotateY(-3deg)}50%{transform:translate3d(0,-7px,8px) rotateY(4deg)}}
+@media(max-width:650px){.composer-companion-stage{left:4px;bottom:13px;width:70px;height:94px}.composer-companion-stage .companion-bust.is-compact{height:94px}.composer-input-row textarea{padding-left:68px!important}}
+@media(prefers-reduced-motion:reduce){.composer-companion-stage .companion-bust svg{animation:none!important}}
