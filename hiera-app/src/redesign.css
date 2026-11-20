@@ -305,3 +305,14 @@ img,video,iframe{max-width:100%}
  .composer-companion-stage .bust-3d-model{transform:scale(.56) rotateY(-16deg)!important;transform-origin:bottom center!important}
  .composer-input-row textarea{padding-left:94px!important}
 }
+
+
+/* WebGL Three.js companion model inside the composer */
+.composer-companion-stage{left:4px!important;bottom:4px!important;width:108px!important;height:126px!important;z-index:6!important;overflow:visible!important;perspective:none!important}
+.companion-real3d{width:100%;height:100%;overflow:visible;pointer-events:none}
+.companion-real3d canvas{display:block;width:100%!important;height:100%!important;outline:none}
+.composer-input-row textarea{padding-left:116px!important}
+@media(max-width:650px){
+ .composer-companion-stage{left:1px!important;bottom:4px!important;width:82px!important;height:104px!important}
+ .composer-input-row textarea{padding-left:88px!important}
+}
