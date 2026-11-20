@@ -1210,3 +1210,16 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
   .chat-layout,.chat-column,.conversation{min-height:0;height:auto}
   .messages{min-height:0;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch}
 }
+
+
+/* Masquer la barre de défilement des messages sans désactiver le scroll */
+.messages{
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+  scrollbar-gutter:auto;
+}
+.messages::-webkit-scrollbar{
+  display:none;
+  width:0;
+  height:0;
+}
