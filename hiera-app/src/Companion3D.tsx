@@ -142,8 +142,7 @@ export default function Companion3D({ id, name, activity = 'idle' }: { id: strin
       const energy = analyzing ? 0.08 : thinking ? 0.16 : speaking ? 0.13 : listening ? 0.1 : typing ? 0.075 : 0.055;
       robot.position.y = Math.sin(t * tempo) * energy + (speaking ? Math.abs(Math.sin(t * 7)) * 0.035 : 0);
       robot.rotation.y = Math.sin(t * (analyzing ? 1.25 : thinking ? 1.7 : 0.7)) * (analyzing ? 0.1 : thinking ? 0.3 : listening ? 0.23 : 0.17);
-      robot.rotation.x = analyzing ? -0.12 + Math.sin(t * 2.4) * 0.025 : robot.rotation.x;
-      robot.rotation.x = Math.sin(t * (speaking ? 4.5 : 0.9)) * (speaking ? 0.09 : 0.025);
+      robot.rotation.x = analyzing ? -0.12 + Math.sin(t * 2.4) * 0.025 : Math.sin(t * (speaking ? 4.5 : 0.9)) * (speaking ? 0.09 : 0.025);
       robot.rotation.z = listening ? Math.sin(t * 1.8) * 0.07 : typing ? Math.sin(t * 2.4) * 0.035 : 0;
       pods.forEach((pod, index) => { pod.rotation.y = Math.sin(t * (thinking ? 3.2 : 1.2) + index) * (thinking ? 0.3 : 0.12); });
       workstation.visible = analyzing;
