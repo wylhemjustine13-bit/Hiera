@@ -47,3 +47,7 @@
  .composer-input-row .composer-actions{gap:4px}
  .composer-input-row .composer-actions>button,.composer-input-row .attach-toggle,.composer-input-row .voice-toggle{width:28px!important;height:28px!important}
 }
+
+/* Descendre légèrement la barre vers le bas de la fenêtre */
+.composer{transform:translateY(12px)!important}
+@media(max-width:760px){.composer{transform:translateY(8px)!important}}
