@@ -195,3 +195,118 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
  .welcome .atom,.welcome .orbit,.welcome .nucleus,.atom-logo,.welcome h1,.welcome .subtitle,.quick-prompts button,.message,.typing{animation:none!important}
  .quick-prompts button,.message-mark,.sidebar-primary-nav .side-link,.settings-home-button,.companion-card,.settings-feature-card,.composer{transition:none!important}
 }
+
+
+/* COMPANIONS PAGE — use the full workspace and add clear motion */
+.settings-page:has(.companions-grid){
+  width:min(1120px,100%)!important;
+  max-width:1120px!important;
+}
+.settings-page:has(.companions-grid) .settings-detail{
+  display:block!important;
+  width:100%!important;
+  margin-top:22px!important;
+}
+.settings-page:has(.companions-grid) .settings-feature-card{
+  width:100%!important;
+  padding:clamp(20px,2.5vw,30px)!important;
+  overflow:visible!important;
+}
+.companions-grid{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:16px!important;
+  width:100%!important;
+  margin:22px 0 16px!important;
+}
+.companion-card{
+  position:relative!important;
+  display:flex!important;
+  min-width:0!important;
+  min-height:230px!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  gap:10px!important;
+  padding:22px!important;
+  overflow:hidden!important;
+  text-align:left!important;
+  transform:translateY(0);
+  animation:companion-enter .6s cubic-bezier(.2,.75,.25,1) both;
+}
+.companion-card:nth-child(2){animation-delay:.07s}
+.companion-card:nth-child(3){animation-delay:.14s}
+.companion-card:nth-child(4){animation-delay:.21s}
+.companion-card:nth-child(5){animation-delay:.28s}
+.companion-card:nth-child(6){animation-delay:.35s}
+.companion-card::after{
+  content:"";
+  position:absolute;
+  width:150px;height:150px;
+  right:-70px;top:-75px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(174,126,255,.15),transparent 70%);
+  opacity:0;
+  transition:opacity .3s ease;
+  pointer-events:none;
+}
+.companion-card:hover{
+  transform:translateY(-6px)!important;
+  border-color:rgba(190,145,255,.75)!important;
+  box-shadow:0 16px 36px rgba(89,48,145,.2)!important;
+}
+.companion-card:hover::after,.companion-card.selected::after{opacity:1}
+.companion-emoji{
+  display:grid!important;
+  place-items:center!important;
+  width:54px!important;height:54px!important;
+  margin-bottom:3px!important;
+  border:1px solid var(--hr-line)!important;
+  border-radius:17px!important;
+  background:var(--hr-glow)!important;
+  font-size:29px!important;
+  animation:companion-icon-float 3.2s ease-in-out infinite;
+}
+.companion-card:nth-child(2) .companion-emoji{animation-delay:.25s}
+.companion-card:nth-child(3) .companion-emoji{animation-delay:.5s}
+.companion-card strong{font:750 17px Manrope,sans-serif!important}
+.companion-card small{color:var(--hr-purple)!important;font-size:11px!important;font-weight:700}
+.companion-card p{flex:1!important;margin:0!important;font-size:12px!important;line-height:1.6!important}
+.companion-select-label{
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  margin-top:4px!important;
+  padding:8px 11px!important;
+  border:1px solid var(--hr-line)!important;
+  border-radius:9px!important;
+  color:var(--hr-purple)!important;
+  font-size:10px!important;
+  font-weight:700!important;
+  transition:background .2s ease,color .2s ease;
+}
+.companion-card.selected .companion-select-label{
+  background:var(--hr-glow)!important;
+  border-color:rgba(182,138,255,.5)!important;
+}
+@keyframes companion-enter{
+  from{opacity:0;transform:translateY(18px) scale(.985)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+@keyframes companion-icon-float{
+  0%,100%{transform:translateY(0) rotate(0)}
+  50%{transform:translateY(-5px) rotate(3deg)}
+}
+@media(max-width:900px){
+  .settings-page:has(.companions-grid){max-width:100%!important}
+  .companions-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:560px){
+  .settings-page:has(.companions-grid){padding:20px 0 35px!important}
+  .companions-grid{grid-template-columns:1fr!important;gap:11px!important}
+  .companion-card{min-height:0!important;padding:18px!important}
+  .companion-card p{min-height:0}
+}
+@media(prefers-reduced-motion:reduce){
+  .companion-card,.companion-emoji{animation:none!important}
+  .companion-card,.companion-card:hover,.companion-emoji{transform:none!important;transition:none!important}
+}
