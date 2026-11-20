@@ -1062,6 +1062,18 @@ button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px sol
 @media(max-width:700px){.learning-layout{grid-template-columns:1fr}.learning-page{padding-top:18px}.learning-demo-heading{flex-direction:column}}
 
 
+/* HIERA — navigation restructurée par espaces */
+.sidebar-nav-group{display:flex;flex-direction:column;gap:3px;flex:none}
+.sidebar-nav-group .side-label{margin:17px 10px 6px}
+.sidebar-primary-nav{display:flex;flex-direction:column;gap:4px}
+.sidebar-primary-nav .side-link{min-height:42px}
+.sidebar-nav-group + .sidebar-nav-group{margin-top:5px}
+@media(max-width:760px){
+  .sidebar-nav-group{width:100%;min-width:0}
+  .sidebar-nav-group .side-label{margin:12px 8px 5px}
+  .sidebar-nav-group .sidebar-primary-nav .side-link{width:100%;justify-content:flex-start}
+}
+
 /* HIERA — réorganisation générale de l'interface */
 .shell{grid-template-columns:248px minmax(0,1fr)!important}
 .sidebar{padding:24px 15px 18px;background:linear-gradient(180deg,#0b0820f8,#10092cf5);border-right:1px solid #a87bff2b}
