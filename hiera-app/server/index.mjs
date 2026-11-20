@@ -1058,6 +1058,7 @@ const server = createServer(async (req, res) => {
          ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, display_name = EXCLUDED.display_name`
       );
       if (req.method === 'POST' && url.pathname === '/api/admin/account/delete') {
+        await ensureIntegrationTable();
         const body = await readJson(req);
         const userId = typeof body.userId === 'string' ? body.userId.slice(0, 300) : '';
         if (!userId) return send(res, 400, { error: 'Compte invalide.' });
@@ -1083,8 +1084,6 @@ const server = createServer(async (req, res) => {
           }
           await client.query('DELETE FROM hiera_accounts WHERE LOWER(email) = LOWER($1)', [target.rows[0].email]);
           await client.query('DELETE FROM hiera_integrations WHERE user_id = $1', [userId]);
-          if (userId.startsWith('email:')) {
-          }
           await client.query('DELETE FROM hiera_user_profiles WHERE user_id = $1', [userId]);
           await client.query('COMMIT');
           return send(res, 200, { ok: true });
