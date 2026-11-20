@@ -1027,7 +1027,7 @@ const server = createServer(async (req, res) => {
   }
 
   const adminUser = readSession(req);
-  const adminPaths = ['/api/admin/me', '/api/admin/overview', '/api/admin/account', '/api/admin/reset-request/resolve', '/api/admin/help/request', '/api/admin/help/view', '/api/admin/help/close', '/api/admin/safety/review'];
+  const adminPaths = ['/api/admin/me', '/api/admin/overview', '/api/admin/account', '/api/admin/account/delete', '/api/admin/reset-request/resolve', '/api/admin/help/request', '/api/admin/help/view', '/api/admin/help/close', '/api/admin/safety/review'];
   if (adminPaths.includes(url.pathname)) {
     if (!adminUser) return send(res, 401, { error: 'Connecte-toi pour accéder à Hiera Control.' });
     const allowedAdmins = (process.env.HIERA_ADMIN_EMAILS || '').split(',').map((email) => email.trim().toLowerCase()).filter(Boolean);
@@ -1045,6 +1045,36 @@ const server = createServer(async (req, res) => {
          SELECT 'email:' || id::text, email, display_name, created_at, created_at FROM hiera_accounts
          ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, display_name = EXCLUDED.display_name`
       );
+      if (req.method === 'POST' && url.pathname === '/api/admin/account/delete') {
+        const body = await readJson(req);
+        const userId = typeof body.userId === 'string' ? body.userId.slice(0, 300) : '';
+        if (!userId) return send(res, 400, { error: 'Compte invalide.' });
+        const target = await pool.query('SELECT user_id, email FROM hiera_user_profiles WHERE user_id = $1', [userId]);
+        if (!target.rowCount) return send(res, 404, { error: 'Compte introuvable.' });
+        if (String(target.rows[0].email || '').toLowerCase() === String(adminUser.email || '').toLowerCase()) {
+          return send(res, 403, { error: 'Tu ne peux pas supprimer le compte administrateur actuellement connecté.' });
+        }
+        const client = await pool.connect();
+        try {
+          await client.query('BEGIN');
+          await client.query('DELETE FROM hiera_usage WHERE user_id = $1', [userId]);
+          await client.query('DELETE FROM hiera_help_requests WHERE user_id = $1', [userId]);
+          await client.query('DELETE FROM hiera_safety_flags WHERE user_id = $1', [userId]);
+          await client.query('DELETE FROM hiera_password_reset_requests WHERE LOWER(email) = LOWER($1)', [target.rows[0].email]);
+          if (userId.startsWith('email:')) {
+            const accountId = userId.slice('email:'.length);
+            if (/^\\d+$/.test(accountId)) await client.query('DELETE FROM hiera_accounts WHERE id = $1', [accountId]);
+          }
+          await client.query('DELETE FROM hiera_user_profiles WHERE user_id = $1', [userId]);
+          await client.query('COMMIT');
+          return send(res, 200, { ok: true });
+        } catch (deleteError) {
+          await client.query('ROLLBACK');
+          throw deleteError;
+        } finally {
+          client.release();
+        }
+      }
       if (req.method === 'POST' && url.pathname === '/api/admin/account') {
         const body = await readJson(req);
         const userId = typeof body.userId === 'string' ? body.userId.slice(0, 300) : '';
