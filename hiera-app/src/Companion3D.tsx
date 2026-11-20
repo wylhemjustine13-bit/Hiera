@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
 const palette: Record<string, { glow: string; armor: string; face: string; trim: string }> = {
@@ -10,7 +10,7 @@ const palette: Record<string, { glow: string; armor: string; face: string; trim:
   atlas: { glow: '#ffc45d', armor: '#70502b', face: '#ffe6bd', trim: '#ffdb8b' },
 };
 
-export default function Companion3D({ id, name, activity = 'idle' }: { id: string; name: string; activity?: 'idle' | 'typing' | 'thinking' | 'analyzing' | 'speaking' | 'listening' }) {
+function Companion3D({ id, name, activity = 'idle' }: { id: string; name: string; activity?: 'idle' | 'typing' | 'thinking' | 'analyzing' | 'speaking' | 'listening' }) {
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -175,3 +175,5 @@ export default function Companion3D({ id, name, activity = 'idle' }: { id: strin
     {activity === 'analyzing' && <div className="companion-action-label">Analyse en cours</div>}
   </div>;
 }
+
+export default memo(Companion3D);
