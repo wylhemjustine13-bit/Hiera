@@ -830,8 +830,26 @@ export default function App() {
       <aside className="sidebar">
         <button className="brand" onClick={() => setSidebarOpen((open) => !open)} aria-label="Rétracter ou afficher la barre latérale"><AtomLogo /><div><span>Hiera</span><small>Votre IA, toujours avec vous</small></div></button>
         <button className="new-chat" onClick={newConversation} disabled={busy}>＋ Nouvelle conversation</button>
-        <div className="side-label">ESPACE</div>
-        <nav className="sidebar-primary-nav" aria-label="Navigation principale"><button className={`side-link ${!settingsOpen && !learningOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(false); setLearningOpen(false); }}><span>◉</span><b>Conversation</b></button><button className={`side-link ${learningOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(false); setLearningOpen(true); if (window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false); }}><span>☷</span><b>Apprendre</b></button><button className={`side-link ${settingsOpen ? "active" : ""}`} onClick={() => { setLearningOpen(false); setSettingsOpen(true); setSettingsPage("home"); if (window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false); }}><span>⚙</span><b>Paramètres</b></button></nav>
+        <div className="sidebar-nav-group">
+          <div className="side-label">ESPACE DE TRAVAIL</div>
+          <nav className="sidebar-primary-nav" aria-label="Espace de travail">
+            <button type="button" className={`side-link ${!settingsOpen && !learningOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(false); setLearningOpen(false); }}><span>◉</span><b>Discuter</b></button>
+            <button type="button" className={`side-link ${learningOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(false); setLearningOpen(true); if (window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false); }}><span>☷</span><b>Apprendre</b></button>
+          </nav>
+        </div>
+        <div className="sidebar-nav-group">
+          <div className="side-label">PERSONNALISER</div>
+          <nav className="sidebar-primary-nav" aria-label="Personnalisation">
+            <button type="button" className={`side-link ${settingsOpen && settingsPage === "companion" ? "active" : ""}`} onClick={() => { setLearningOpen(false); setSettingsOpen(true); setSettingsPage("companion"); if (window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false); }}><span>✧</span><b>Compagnons</b></button>
+            <button type="button" className={`side-link ${settingsOpen && settingsPage !== "companion" && settingsPage !== "history" ? "active" : ""}`} onClick={() => { setLearningOpen(false); setSettingsOpen(true); setSettingsPage("home"); if (window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false); }}><span>⚙</span><b>Paramètres</b></button>
+          </nav>
+        </div>
+        <div className="sidebar-nav-group">
+          <div className="side-label">BIBLIOTHÈQUE</div>
+          <nav className="sidebar-primary-nav" aria-label="Bibliothèque">
+            <button type="button" className={`side-link ${settingsOpen && settingsPage === "history" ? "active" : ""}`} onClick={() => { setLearningOpen(false); setSettingsOpen(true); setSettingsPage("history"); if (window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false); }}><span>▣</span><b>Historique</b></button>
+          </nav>
+        </div>
         {!privateMode && <><div className="history-heading">CONVERSATIONS</div><div className="conversation-history">{conversations.filter((item) => !!item.archived === showArchived).slice(0,12).map((item) => <div className="history-row" key={item.id}><button className="history-open" onClick={() => openConversation(item)} title={item.title}>{item.title}</button><button className="history-action" onClick={() => archiveConversation(item.id)} aria-label={item.archived ? "Désarchiver" : "Archiver"}>{item.archived ? "↩" : "▣"}</button></div>)}</div><button className="history-toggle" onClick={() => setShowArchived((v) => !v)}>{showArchived ? "Voir les conversations" : "Voir les archivées"}</button><button className="history-clear" onClick={clearAllHistory} disabled={busy || conversations.length === 0}>⌫ Supprimer tout l’historique</button></>}
         <div className="sidebar-account"><div className="account-status"><span className="status-dot" /> {googleUser ? "Google connecté" : "Compte non connecté"}</div><div className="account-provider"><span className="google-g">G</span><span>{googleUser ? googleUser.email : "Gérer dans Paramètres"}</span></div></div>
       </aside>
@@ -840,7 +858,7 @@ export default function App() {
       <section className="workspace" onClick={(event) => { if (sidebarOpen && event.target === event.currentTarget) setSidebarOpen(false); }}>
         <header className="topbar">
           <button className="mobile-menu-button" onClick={() => setSidebarOpen((open) => !open)} aria-label="Afficher ou masquer le menu"><AtomLogo /></button>
-          <span className="topbar-title">{learningOpen ? "Apprendre avec Hiera" : settingsOpen ? "Paramètres" : "Conversation"}</span>
+          <span className="topbar-title">{learningOpen ? "Apprendre avec Hiera" : settingsOpen ? (settingsTitles[settingsPage] || "Paramètres") : "Conversation"}</span>
           {!settingsOpen && !learningOpen && <label className="companion-picker"><span>Compagnon</span><select aria-label="Choisir un compagnon" value={activeCompanionId} onChange={(event) => setActiveCompanionId(event.target.value)}>{companions.map((item) => <option key={item.id} value={item.id}>{item.emoji} {item.name}</option>)}</select></label>}
           {isAdmin && <button type="button" className="admin-open-button" onClick={openAdminPanel} disabled={adminLoading}>{adminLoading ? 'Chargement…' : '◆ Hiera Control'}</button>}
           {googleUser && <span className={`plan-badge plan-${tokenUsage?.plan || 'basic'}`} title="Forfait associé à ton compte">{({ basic: 'Basic', plus: 'Plus', pro: 'Pro', ultimate: 'Ultime' } as Record<string, string>)[tokenUsage?.plan || 'basic'] || 'Basic'}</span>}
