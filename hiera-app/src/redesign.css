@@ -210,3 +210,35 @@ img,video,iframe{max-width:100%}
     min-width:0!important;
   }
 }
+
+/* Portraits animés des six compagnons */
+.companions-grid .companion-card{overflow:hidden;position:relative;padding:0 0 18px!important;display:flex;flex-direction:column;align-items:center;text-align:center}
+.companion-bust{--glow:#a879ff;--hair:#d6c8ff;--accent:#c58bff;position:relative;width:100%;height:190px;display:grid;place-items:end center;overflow:hidden;background:radial-gradient(ellipse at 50% 75%,rgba(132,95,255,.22),transparent 68%),linear-gradient(145deg,rgba(35,26,72,.85),rgba(9,13,33,.96))}
+.companion-bust svg{height:100%;width:auto;max-width:100%;overflow:visible;filter:drop-shadow(0 8px 18px rgba(132,95,255,.2));animation:companion-float 4.2s ease-in-out infinite}
+.companion-bust .bust-aura{fill:var(--glow);opacity:.12;filter:blur(14px)}
+.companion-bust .bust-shoulders{fill:#252344;stroke:var(--accent);stroke-opacity:.8;stroke-width:2}
+.companion-bust .bust-neck{fill:#b7a1dc}
+.companion-bust .bust-face{fill:#d9c9f4;stroke:var(--accent);stroke-opacity:.45;stroke-width:1.4}
+.companion-bust .bust-hair-back,.companion-bust .bust-hair-front{fill:var(--hair);stroke:var(--accent);stroke-width:2}
+.companion-bust .bust-eye{fill:#19122e}
+.companion-bust .bust-eye-glow{fill:var(--glow);filter:drop-shadow(0 0 5px var(--glow))}
+.companion-bust .bust-mouth{fill:none;stroke:#865b9f;stroke-width:2;stroke-linecap:round}
+.companion-bust .bust-collar{fill:#17172f;stroke:var(--accent);stroke-width:2}
+.companion-bust .bust-emblem{fill:var(--glow);filter:drop-shadow(0 0 6px var(--glow))}
+.companion-bust .bust-accessory{fill:none;stroke:var(--glow);stroke-width:3;stroke-linecap:round;filter:drop-shadow(0 0 5px var(--glow))}
+.companion-hiera{--glow:#c078ff;--hair:#e2d3ff;--accent:#b78aff}
+.companion-willy{--glow:#9c7cff;--hair:#f1edff;--accent:#d5c8ff}
+.companion-willy .bust-eye{fill:#5b35ff}
+.companion-nova{--glow:#4c9dff;--hair:#253eaa;--accent:#43caff}
+.companion-pixel{--glow:#21d9ff;--hair:#15294b;--accent:#18d9ff}
+.companion-luna{--glow:#bd83ff;--hair:#c7a5f5;--accent:#d8a7ff}
+.companion-atlas{--glow:#ffc35b;--hair:#75462e;--accent:#e9ae4d}
+.companion-card .companion-bust{height:178px;margin-bottom:14px}
+.companion-card strong,.companion-card small,.companion-card p,.companion-select-label{margin-left:16px;margin-right:16px}
+.companion-bust.is-compact{width:min(230px,60%);height:210px;margin:0 auto 8px;border-radius:26px;background:radial-gradient(ellipse at 50% 72%,rgba(132,95,255,.2),transparent 70%)}
+.companion-bust.is-compact svg{animation-duration:3.6s}
+.companion-bust.is-compact .bust-accessory{animation:companion-pulse 2.8s ease-in-out infinite}
+@keyframes companion-float{0%,100%{transform:translateY(2px) rotate(-.5deg)}50%{transform:translateY(-7px) rotate(.7deg)}}
+@keyframes companion-pulse{0%,100%{opacity:.72}50%{opacity:1}}
+@media(max-width:650px){.companion-card .companion-bust{height:150px}.companion-bust.is-compact{height:175px;width:min(190px,58%)}}
+@media(prefers-reduced-motion:reduce){.companion-bust svg,.companion-bust .bust-accessory{animation:none!important}}
