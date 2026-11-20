@@ -113,6 +113,19 @@ export default function App() {
   const [sharedHelp, setSharedHelp] = useState<any>(null);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [learningOpen, setLearningOpen] = useState(false);
+  const [learningTopic, setLearningTopic] = useState('');
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [learningChecklist, setLearningChecklist] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem('hiera-learning-checklist') || '[]'); } catch { return []; } });
+  const learningSteps = ['Choisir un sujet à apprendre', 'Lire ou écouter une explication', 'Répondre à un petit questionnaire', 'Revoir les réponses et les erreurs'];
+  const demoQuiz = [
+    { id: 'q1', question: 'Quelle civilisation a construit les pyramides de Gizeh ?', options: ['Les Égyptiens de l’Antiquité', 'Les Romains', 'Les Grecs'], answer: 'Les Égyptiens de l’Antiquité', explanation: 'Les pyramides de Gizeh ont été construites dans l’Égypte antique.' },
+    { id: 'q2', question: 'Quelle planète est surnommée la planète rouge ?', options: ['Vénus', 'Mars', 'Jupiter'], answer: 'Mars', explanation: 'Mars doit sa couleur rougeâtre à des minéraux riches en oxyde de fer.' },
+    { id: 'q3', question: 'Combien y a-t-il de côtés dans un triangle ?', options: ['Trois', 'Quatre', 'Cinq'], answer: 'Trois', explanation: 'Un triangle est un polygone qui possède trois côtés et trois angles.' }
+  ];
+  const quizScore = demoQuiz.filter((question) => quizAnswers[question.id] === question.answer).length;
+  useEffect(() => { localStorage.setItem('hiera-learning-checklist', JSON.stringify(learningChecklist)); }, [learningChecklist]);
   const [isFullscreen, setIsFullscreen] = useState(() => Boolean(document.fullscreenElement));
   useEffect(() => {
     const syncFullscreen = () => setIsFullscreen(Boolean(document.fullscreenElement));
@@ -818,7 +831,7 @@ export default function App() {
         <button className="brand" onClick={() => setSidebarOpen((open) => !open)} aria-label="Rétracter ou afficher la barre latérale"><AtomLogo /><div><span>Hiera</span><small>Votre IA, toujours avec vous</small></div></button>
         <button className="new-chat" onClick={newConversation} disabled={busy}>＋ Nouvelle conversation</button>
         <div className="side-label">ESPACE</div>
-        <nav className="sidebar-primary-nav" aria-label="Navigation principale"><button className={`side-link ${!settingsOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(false); }}><span>◉</span><b>Conversation</b></button><button className={`side-link ${settingsOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(true); setSettingsPage("home"); if (window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false); }}><span>⚙</span><b>Paramètres</b></button></nav>
+        <nav className="sidebar-primary-nav" aria-label="Navigation principale"><button className={`side-link ${!settingsOpen && !learningOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(false); setLearningOpen(false); }}><span>◉</span><b>Conversation</b></button><button className={`side-link ${learningOpen ? "active" : ""}`} onClick={() => { setSettingsOpen(false); setLearningOpen(true); if (window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false); }}><span>☷</span><b>Apprendre</b></button><button className={`side-link ${settingsOpen ? "active" : ""}`} onClick={() => { setLearningOpen(false); setSettingsOpen(true); setSettingsPage("home"); if (window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false); }}><span>⚙</span><b>Paramètres</b></button></nav>
         {!privateMode && <><div className="history-heading">CONVERSATIONS</div><div className="conversation-history">{conversations.filter((item) => !!item.archived === showArchived).slice(0,12).map((item) => <div className="history-row" key={item.id}><button className="history-open" onClick={() => openConversation(item)} title={item.title}>{item.title}</button><button className="history-action" onClick={() => archiveConversation(item.id)} aria-label={item.archived ? "Désarchiver" : "Archiver"}>{item.archived ? "↩" : "▣"}</button></div>)}</div><button className="history-toggle" onClick={() => setShowArchived((v) => !v)}>{showArchived ? "Voir les conversations" : "Voir les archivées"}</button><button className="history-clear" onClick={clearAllHistory} disabled={busy || conversations.length === 0}>⌫ Supprimer tout l’historique</button></>}
         <div className="sidebar-account"><div className="account-status"><span className="status-dot" /> {googleUser ? "Google connecté" : "Compte non connecté"}</div><div className="account-provider"><span className="google-g">G</span><span>{googleUser ? googleUser.email : "Gérer dans Paramètres"}</span></div></div>
       </aside>
@@ -827,8 +840,8 @@ export default function App() {
       <section className="workspace" onClick={(event) => { if (sidebarOpen && event.target === event.currentTarget) setSidebarOpen(false); }}>
         <header className="topbar">
           <button className="mobile-menu-button" onClick={() => setSidebarOpen((open) => !open)} aria-label="Afficher ou masquer le menu"><AtomLogo /></button>
-          <span className="topbar-title">{settingsOpen ? "Paramètres" : "Conversation"}</span>
-          {!settingsOpen && <label className="companion-picker"><span>Compagnon</span><select aria-label="Choisir un compagnon" value={activeCompanionId} onChange={(event) => setActiveCompanionId(event.target.value)}>{companions.map((item) => <option key={item.id} value={item.id}>{item.emoji} {item.name}</option>)}</select></label>}
+          <span className="topbar-title">{learningOpen ? "Apprendre avec Hiera" : settingsOpen ? "Paramètres" : "Conversation"}</span>
+          {!settingsOpen && !learningOpen && <label className="companion-picker"><span>Compagnon</span><select aria-label="Choisir un compagnon" value={activeCompanionId} onChange={(event) => setActiveCompanionId(event.target.value)}>{companions.map((item) => <option key={item.id} value={item.id}>{item.emoji} {item.name}</option>)}</select></label>}
           {isAdmin && <button type="button" className="admin-open-button" onClick={openAdminPanel} disabled={adminLoading}>{adminLoading ? 'Chargement…' : '◆ Hiera Control'}</button>}
           {googleUser && <span className={`plan-badge plan-${tokenUsage?.plan || 'basic'}`} title="Forfait associé à ton compte">{({ basic: 'Basic', plus: 'Plus', pro: 'Pro', ultimate: 'Ultime' } as Record<string, string>)[tokenUsage?.plan || 'basic'] || 'Basic'}</span>}
           <button type="button" className={`private-toggle ${privateMode ? 'active' : ''}`} onClick={togglePrivateMode} title={privateMode ? 'Quitter la navigation privée' : 'Activer la navigation privée'} aria-pressed={privateMode}>{privateMode ? '◉ Privé' : '◌ Privé'}</button>
@@ -863,7 +876,33 @@ export default function App() {
 
         {pendingHelpRequest && <div className="help-consent-overlay" role="dialog" aria-modal="true" aria-label="Demande d’aide Hiera"><section className="help-consent-card"><span className="admin-kicker">DEMANDE D’AIDE</span><h2>Un administrateur souhaite t’aider</h2><p>Autorises-tu une consultation unique de ton adresse e-mail et des 30 derniers messages visibles de cette conversation ? Les pièces jointes et les autres conversations ne seront pas partagées.{privateMode ? ' Le mode privé est actif : aucun message ne sera transmis.' : ''}</p><p className="help-consent-expiry">Cette demande expire automatiquement. Tu peux refuser sans conséquence sur ton compte.</p><div><button type="button" className="admin-reactivate" disabled={helpConsentBusy} onClick={() => void respondToHelpRequest(false)}>Refuser</button><button type="button" className="admin-help-button" disabled={helpConsentBusy} onClick={() => void respondToHelpRequest(true)}>{helpConsentBusy ? 'Envoi…' : 'Autoriser une fois'}</button></div></section></div>}
         {sharedHelp && <div className="help-consent-overlay" role="dialog" aria-modal="true" aria-label="Session d’aide autorisée"><section className="help-consent-card shared-help-card"><span className="admin-kicker">ACCÈS AUTORISÉ UNE FOIS</span><h2>Session d’aide · {sharedHelp.email}</h2><p>Seule la conversation choisie par l’utilisateur est visible. Ferme la session après consultation.</p><div className="shared-help-messages">{sharedHelp.messages.map((item: any, index: number) => <article key={index}><b>{item.role === 'user' ? 'Utilisateur' : 'Hiera'}</b><p>{item.content}</p></article>)}</div><button type="button" className="admin-ban" onClick={() => void closeSharedHelp()}>Fermer et supprimer l’accès</button></section></div>}
-        {settingsOpen ? (
+
+        {learningOpen ? (
+          <section className="settings-page learning-page">
+            <p className="eyebrow">ESPACE PÉDAGOGIQUE</p><h1>Apprendre avec Hiera</h1>
+            <p className="settings-intro">Entraîne-toi à ton rythme, vérifie ce que tu as compris et découvre de nouveaux sujets.</p>
+            <div className="learning-layout">
+              <section className="settings-feature-card learning-create-card"><span className="learning-icon">✦</span><strong>Créer un questionnaire personnalisé</strong><p>Choisis un sujet : Hiera préparera un petit quiz, puis pourra corriger tes réponses et t’expliquer les notions.</p>
+                <form onSubmit={(event) => { event.preventDefault(); const topic = learningTopic.trim(); if (!topic || busy) return; setLearningOpen(false); void sendText('Crée-moi un questionnaire de 5 questions sur « ' + topic + ' ». Présente les questions une par une avec des choix A, B, C et D. Attends mes réponses avant de donner la correction, puis explique simplement mes erreurs.'); }}>
+                  <input className="settings-select" value={learningTopic} onChange={(event) => setLearningTopic(event.target.value)} placeholder="Ex. : l’Empire romain, les fractions, les volcans…" maxLength={120} />
+                  <button className="settings-primary-button" type="submit" disabled={!learningTopic.trim() || busy}>✧ Demander un quiz à Hiera</button>
+                </form>
+              </section>
+              <section className="settings-feature-card learning-checklist-card"><strong>Mon parcours d’apprentissage</strong><p>Coche les étapes au fur et à mesure. Ta progression est enregistrée sur cet appareil.</p>
+                <div className="learning-progress"><span style={{ width: String(Math.round(learningChecklist.length / learningSteps.length * 100)) + '%' }} /></div><small>{learningChecklist.length} étape(s) sur {learningSteps.length} terminée(s)</small>
+                {learningSteps.map((step) => <label className="learning-check-row" key={step}><input type="checkbox" checked={learningChecklist.includes(step)} onChange={(event) => setLearningChecklist((current) => event.target.checked ? [...current, step] : current.filter((item) => item !== step))} /><span>{step}</span></label>)}
+                <button className="settings-text-link" type="button" onClick={() => setLearningChecklist([])}>Réinitialiser ma progression</button>
+              </section>
+            </div>
+            <section className="settings-feature-card learning-demo-card"><div className="learning-demo-heading"><div><span className="eyebrow">POUR COMMENCER</span><strong>Mini-quiz de découverte</strong><p>Trois questions pour essayer le questionnaire.</p></div><span className="learning-quiz-count">3 questions</span></div>
+              {demoQuiz.map((question, index) => <fieldset className="learning-question" key={question.id} disabled={quizSubmitted}><legend>{index + 1}. {question.question}</legend>
+                {question.options.map((option) => <label className={quizSubmitted && option === question.answer ? 'learning-option learning-option-correct' : 'learning-option'} key={option}><input type="radio" name={question.id} value={option} checked={quizAnswers[question.id] === option} onChange={() => setQuizAnswers((current) => ({ ...current, [question.id]: option }))} />{option}</label>)}
+                {quizSubmitted && <p className="learning-feedback">{quizAnswers[question.id] === question.answer ? '✓ Bonne réponse. ' : 'Réponse attendue : ' + question.answer + '. '}{question.explanation}</p>}
+              </fieldset>)}
+              {!quizSubmitted ? <button className="settings-primary-button" type="button" disabled={Object.keys(quizAnswers).length !== demoQuiz.length} onClick={() => setQuizSubmitted(true)}>Corriger mes réponses</button> : <div className="learning-result"><strong>Ton résultat : {quizScore} / {demoQuiz.length}</strong><p>{quizScore === demoQuiz.length ? 'Excellent travail !' : 'Bien joué, relis les explications et réessaie pour progresser.'}</p><button className="settings-primary-button" type="button" onClick={() => { setQuizAnswers({}); setQuizSubmitted(false); }}>Recommencer le quiz</button></div>}
+            </section>
+          </section>
+        ) : settingsOpen ? (
           <section className="settings-page settings-redesign">
             {settingsPage !== 'home' && <button className="settings-back" onClick={() => setSettingsPage('home')}>← Retour aux paramètres</button>}
             <p className="eyebrow">ESPACE PERSONNEL</p>
