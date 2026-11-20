@@ -829,8 +829,9 @@ export default function App() {
   return (
     <main className={`shell ${sidebarOpen ? "" : "sidebar-collapsed"}`}>
       <aside className="sidebar">
-        <button className="brand" onClick={() => setSidebarOpen((open) => !open)} aria-label="Rétracter ou afficher la barre latérale"><AtomLogo /><div><span>Hiera</span><small>Votre IA, toujours avec vous</small></div></button>
-        <button className="new-chat" onClick={newConversation} disabled={busy}>＋ Nouvelle conversation</button>
+        <div className="sidebar-top"><button className="brand" onClick={() => setSidebarOpen((open) => !open)} aria-label="Rétracter ou afficher la barre latérale"><AtomLogo /><div><span>Hiera</span><small>Votre IA, toujours avec vous</small></div></button>
+        <button className="new-chat" onClick={newConversation} disabled={busy}><span aria-hidden="true">＋</span> Nouvelle conversation</button></div>
+        <div className="sidebar-navigation">
         <div className="sidebar-nav-group">
           <div className="side-label">ESPACE DE TRAVAIL</div>
           <nav className="sidebar-primary-nav" aria-label="Espace de travail">
@@ -850,8 +851,8 @@ export default function App() {
             <button type="button" className={`side-link ${settingsOpen && settingsPage === "history" ? "active" : ""}`} onClick={() => { setLearningOpen(false); setSettingsOpen(true); setSettingsPage("history"); if (window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false); }}><span>▣</span><b>Historique</b></button>
           </nav>
         </div>
-        {!privateMode && <><div className="history-heading">CONVERSATIONS</div><div className="conversation-history">{conversations.filter((item) => !!item.archived === showArchived).slice(0,12).map((item) => <div className="history-row" key={item.id}><button className="history-open" onClick={() => openConversation(item)} title={item.title}>{item.title}</button><button className="history-action" onClick={() => archiveConversation(item.id)} aria-label={item.archived ? "Désarchiver" : "Archiver"}>{item.archived ? "↩" : "▣"}</button></div>)}</div><button className="history-toggle" onClick={() => setShowArchived((v) => !v)}>{showArchived ? "Voir les conversations" : "Voir les archivées"}</button><button className="history-clear" onClick={clearAllHistory} disabled={busy || conversations.length === 0}>⌫ Supprimer tout l’historique</button></>}
-        <div className="sidebar-account"><div className="account-status"><span className="status-dot" /> {googleUser ? "Google connecté" : "Compte non connecté"}</div><div className="account-provider"><span className="google-g">G</span><span>{googleUser ? googleUser.email : "Gérer dans Paramètres"}</span></div></div>
+        {!privateMode && <><div className="history-heading">CONVERSATIONS</div><div className="conversation-history">{conversations.filter((item) => !!item.archived === showArchived).slice(0,12).map((item) => <div className="history-row" key={item.id}><button className="history-open" onClick={() => openConversation(item)} title={item.title}>{item.title}</button><button className="history-action" onClick={() => archiveConversation(item.id)} aria-label={item.archived ? "Désarchiver" : "Archiver"}>{item.archived ? "↩" : "▣"}</button></div>)}</div><button className="history-toggle" onClick={() => setShowArchived((v) => !v)}>{showArchived ? "Voir les conversations" : "Voir les archivées"}</button><button className="history-clear" onClick={clearAllHistory} disabled={busy || conversations.length === 0}>⌫ Supprimer tout l’historique</button></>}</div>
+        <div className="sidebar-bottom"><div className="sidebar-account"><div className="account-status"><span className="status-dot" /> {googleUser ? "Google connecté" : "Compte non connecté"}</div><div className="account-provider"><span className="google-g">G</span><span>{googleUser ? googleUser.email : "Gérer dans Paramètres"}</span></div></div>
       </aside>
       {sidebarOpen && <button className="sidebar-dismiss-zone" onClick={() => setSidebarOpen(false)} aria-label="Rétracter la barre latérale" />}
 
@@ -866,6 +867,7 @@ export default function App() {
           <button type="button" className="fullscreen-toggle" onClick={toggleFullscreen} aria-label={isFullscreen ? "Quitter le plein écran" : "Passer en plein écran"} title={isFullscreen ? "Quitter le plein écran" : "Plein écran"}>{isFullscreen ? "⤢" : "⛶"}<span>{isFullscreen ? "Quitter" : "Plein écran"}</span></button>
         </header>
 
+        <div className="workspace-content">
         {adminPanel && adminData && <div className="admin-overlay" role="dialog" aria-modal="true" aria-label="Hiera Control">
           <section className="admin-panel">
             <header className="admin-panel-header"><div><span className="admin-kicker">ESPACE ADMINISTRATEUR</span><h2>Hiera Control</h2><small>Connecté : {adminData.email} · Actualisation automatique</small></div><button type="button" onClick={() => setAdminPanel(false)} aria-label="Fermer Hiera Control">×</button></header>
@@ -896,7 +898,7 @@ export default function App() {
         {sharedHelp && <div className="help-consent-overlay" role="dialog" aria-modal="true" aria-label="Session d’aide autorisée"><section className="help-consent-card shared-help-card"><span className="admin-kicker">ACCÈS AUTORISÉ UNE FOIS</span><h2>Session d’aide · {sharedHelp.email}</h2><p>Seule la conversation choisie par l’utilisateur est visible. Ferme la session après consultation.</p><div className="shared-help-messages">{sharedHelp.messages.map((item: any, index: number) => <article key={index}><b>{item.role === 'user' ? 'Utilisateur' : 'Hiera'}</b><p>{item.content}</p></article>)}</div><button type="button" className="admin-ban" onClick={() => void closeSharedHelp()}>Fermer et supprimer l’accès</button></section></div>}
 
         {learningOpen ? (
-          <section className="settings-page learning-page">
+          <section className="settings-page learning-page page-surface">
             <p className="eyebrow">ESPACE PÉDAGOGIQUE</p><h1>Apprendre avec Hiera</h1>
             <p className="settings-intro">Entraîne-toi à ton rythme, vérifie ce que tu as compris et découvre de nouveaux sujets.</p>
             <div className="learning-layout">
@@ -921,7 +923,7 @@ export default function App() {
             </section>
           </section>
         ) : settingsOpen ? (
-          <section className="settings-page settings-redesign">
+          <section className="settings-page settings-redesign page-surface">
             {settingsPage !== 'home' && <button className="settings-back" onClick={() => setSettingsPage('home')}>← Retour aux paramètres</button>}
             <p className="eyebrow">ESPACE PERSONNEL</p>
             <h1>{settingsTitles[settingsPage] || 'Paramètres'}</h1>
@@ -1058,6 +1060,7 @@ export default function App() {
             </div>}
           </section>        ) : (
           <>
+            <div className="chat-layout"><div className="chat-column">
             <div className="conversation">
               {privateMode && <div className="private-notice">◉ Navigation privée activée · Cette conversation ne sera pas enregistrée dans ton historique.</div>}
               {authError && <p className="auth-error" role="alert">{authError}</p>}
@@ -1087,9 +1090,11 @@ export default function App() {
             </form>
             {previewAttachment && <div className="document-overlay" role="dialog" aria-modal="true" aria-label={`Aperçu de ${previewAttachment.name}`}><section className="document-panel"><header className="document-header"><div><strong>{previewAttachment.name}</strong><small>{previewAttachment.mimeType === 'application/pdf' ? 'Lecteur PDF' : 'Aperçu du contenu extrait'}</small></div><button type="button" onClick={() => setPreviewAttachment(null)} aria-label="Fermer l’aperçu">×</button></header>{previewAttachment.previewUrl ? <iframe className="pdf-viewer" src={previewAttachment.previewUrl} title={previewAttachment.name} /> : <pre className="document-text">{previewAttachment.text || 'Aucun texte lisible trouvé dans ce fichier.'}</pre>}</section></div>}
             <p className="disclaimer">Ne partage jamais de données personnelles ou confidentielles dans une conversation.</p>
+            </div></div>
             {writingOpen && <div className="writing-overlay" role="dialog" aria-modal="true" aria-label="Espace d’écriture"><section className="writing-panel"><header className="writing-header"><div><strong>Espace d’écriture</strong><small>Modifie et mets en forme ton texte</small></div><button type="button" onClick={() => setWritingOpen(false)} aria-label="Fermer l’espace d’écriture">×</button></header><div className="writing-toolbar"><button type="button" onClick={() => formatWriting('bold')}><b>G</b></button><button type="button" onClick={() => formatWriting('italic')}><i>I</i></button><button type="button" onClick={() => formatWriting('underline')}><u>S</u></button><button type="button" onClick={() => formatWriting('hiliteColor','#fff29a')} title="Surligner">🖍</button><button type="button" onClick={() => formatWriting('insertParagraph')} title="Nouveau paragraphe">¶</button><select aria-label="Police" defaultValue="Arial" onChange={(e) => formatWriting('fontName',e.target.value)}><option value="Arial">Arial</option><option value="Georgia">Georgia</option><option value="Verdana">Verdana</option><option value="Times New Roman">Times New Roman</option><option value="Courier New">Courier New</option><option value="Trebuchet MS">Trebuchet MS</option></select><select aria-label="Taille du texte" defaultValue="3" onChange={(e) => formatWriting('fontSize',e.target.value)}><option value="2">Petit</option><option value="3">Normal</option><option value="4">Grand</option><option value="5">Très grand</option><option value="6">Titre</option></select></div><div ref={writingEditorRef} className="writing-editable" contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-placeholder="Écris ou colle ton texte ici…" /><footer className="writing-footer"><button type="button" onClick={copyWriting}>⧉ Copier le texte</button><button type="button" onClick={() => { setDraft(writingEditorRef.current?.innerText || ''); setWritingOpen(false); }}>Utiliser dans le message</button><button type="button" onClick={() => setWritingOpen(false)}>Terminer</button></footer></section></div>}
           </>
         )}
+        </div>
       </section>
     </main>
   );
