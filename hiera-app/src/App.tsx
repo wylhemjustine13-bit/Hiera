@@ -573,24 +573,57 @@ export default function App() {
 
   function startVoiceListening() {
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!Recognition) { setError("La reconnaissance vocale n'est pas prise en charge par ce navigateur. Essaie Chrome."); setLiveVoice(false); liveVoiceRef.current=false; return; }
+    if (!Recognition) {
+      setError("La dictée vocale n'est pas disponible dans ce navigateur. Utilise Google Chrome et vérifie les autorisations du micro.");
+      setVoiceStatus('Reconnaissance vocale indisponible');
+      setLiveVoice(false);
+      liveVoiceRef.current = false;
+      return;
+    }
     const recognition = new Recognition();
+    const initialDraft = draft.trim();
     recognition.lang = settingsValues.language || 'fr-FR';
     recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.onresult = (event) => {
-      const transcript = Array.from(event.results as ArrayLike<any>).map((result: any) => result[0]?.transcript || '').join(' ').trim();
+      const transcript = Array.from(event.results as ArrayLike<any>)
+        .map((result: any) => result[0]?.transcript || '')
+        .join(' ').trim();
       if (transcript) {
-        stopLiveVoice();
-        setDraft((current) => [current.trim(), transcript].filter(Boolean).join(current.trim() ? ' ' : ''));
-        setVoiceStatus('Texte ajouté dans la barre de message');
+        setDraft([initialDraft, transcript].filter(Boolean).join(initialDraft ? ' ' : ''));
+        setVoiceStatus('Texte reconnu — tu peux le modifier avant de l’envoyer');
       }
     };
-    recognition.onerror = (event) => { setVoiceStatus(event.error === 'not-allowed' ? "Autorisation du micro refusée" : "Je n'ai pas compris, réessaie"); };
-    recognition.onend = () => { recognitionRef.current = null; if (liveVoiceRef.current && !busyRef.current) window.setTimeout(() => { if (liveVoiceRef.current && !busyRef.current && !recognitionRef.current) startVoiceListening(); }, 500); };
+    recognition.onerror = (event) => {
+      const message = event.error === 'not-allowed' || event.error === 'service-not-allowed'
+        ? "Autorise l'accès au micro dans Chrome (icône à gauche de l'adresse)."
+        : event.error === 'no-speech' ? "Je n'ai rien entendu. Réessaie en parlant près du micro."
+        : event.error === 'audio-capture' ? "Aucun micro n'a été détecté sur cet appareil."
+        : "La reconnaissance vocale a échoué. Réessaie.";
+      setError(message);
+      setVoiceStatus('Micro : ' + event.error);
+      liveVoiceRef.current = false;
+      setLiveVoice(false);
+    };
+    recognition.onend = () => {
+      recognitionRef.current = null;
+      liveVoiceRef.current = false;
+      setLiveVoice(false);
+      setVoiceStatus((current) => current === "J'écoute…" ? "Écoute terminée" : current);
+    };
     recognitionRef.current = recognition;
-    try { recognition.start(); setVoiceStatus("J'écoute…"); }
-    catch { setVoiceStatus("Micro indisponible"); }
+    liveVoiceRef.current = true;
+    setLiveVoice(true);
+    try {
+      recognition.start();
+      setVoiceStatus("J'écoute… parle maintenant");
+    } catch {
+      recognitionRef.current = null;
+      liveVoiceRef.current = false;
+      setLiveVoice(false);
+      setVoiceStatus('Micro indisponible');
+      setError("Impossible de démarrer le micro. Vérifie qu'aucune autre application ne l'utilise.");
+    }
   }
 
   function stopLiveVoice() {
@@ -599,50 +632,17 @@ export default function App() {
     recognitionRef.current?.stop();
     recognitionRef.current = null;
     if (voiceHeartbeatRef.current !== null) { window.clearInterval(voiceHeartbeatRef.current); voiceHeartbeatRef.current = null; }
-    void fetch('/api/voice/stop', { method: 'POST' });
-    window.speechSynthesis?.cancel();
-    setVoiceStatus('Mode vocal désactivé');
+    setVoiceStatus('Écoute arrêtée');
   }
 
   async function startLiveVoice() {
-    if (!('speechSynthesis' in window)) { setError("La lecture vocale n'est pas disponible sur ce navigateur."); return; }
     setError('');
-    try {
-      const response = await fetch('/api/voice/start', { method: 'POST' });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Quota vocal indisponible.');
-      liveVoiceRef.current = true;
-      setLiveVoice(true);
-      setVoiceStatus('Mode vocal activé');
-      voiceHeartbeatRef.current = window.setInterval(async () => {
-        try {
-          const heartbeat = await fetch('/api/voice/heartbeat', { method: 'POST' });
-          const status = await heartbeat.json();
-          if (!heartbeat.ok || Number(status.secondsRemaining) <= 0) {
-            liveVoiceRef.current = false;
-            setLiveVoice(false);
-            recognitionRef.current?.stop();
-            recognitionRef.current = null;
-            if (voiceHeartbeatRef.current !== null) { window.clearInterval(voiceHeartbeatRef.current); voiceHeartbeatRef.current = null; }
-            window.speechSynthesis?.cancel();
-            setVoiceStatus('Quota vocal atteint');
-            setError(status.error || 'Tu as atteint la durée vocale de ton forfait pour cette période de 24 heures.');
-          }
-        } catch {
-          liveVoiceRef.current = false;
-          setLiveVoice(false);
-          recognitionRef.current?.stop();
-          recognitionRef.current = null;
-          if (voiceHeartbeatRef.current !== null) { window.clearInterval(voiceHeartbeatRef.current); voiceHeartbeatRef.current = null; }
-          setVoiceStatus('Vérification du quota vocal impossible');
-          setError('La vérification du quota vocal a échoué. Le mode vocal a été arrêté par sécurité.');
-        }
-      }, 15000);
-      startVoiceListening();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Impossible de démarrer le mode vocal.');
-      setVoiceStatus('Mode vocal indisponible');
+    if (!window.isSecureContext) {
+      setError('Le micro nécessite une connexion sécurisée HTTPS.');
+      setVoiceStatus('Connexion non sécurisée');
+      return;
     }
+    startVoiceListening();
   }
 
   async function addAttachments(fileList: FileList | null) {
