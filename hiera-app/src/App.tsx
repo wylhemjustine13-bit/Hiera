@@ -133,6 +133,8 @@ export default function App() {
   const [developerOpen, setDeveloperOpen] = useState(false);
   const [developerTab, setDeveloperTab] = useState('overview');
   const [developerNotice, setDeveloperNotice] = useState('');
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [installMessage, setInstallMessage] = useState('');
   const brandTapRef = useRef({ count: 0, lastTap: 0 });
   const [learningOpen, setLearningOpen] = useState(false);
   const [learningTopic, setLearningTopic] = useState('');
@@ -148,6 +150,44 @@ export default function App() {
   const quizScore = demoQuiz.filter((question) => quizAnswers[question.id] === question.answer).length;
   useEffect(() => { localStorage.setItem('hiera-learning-checklist', JSON.stringify(learningChecklist)); }, [learningChecklist]);
   const [isFullscreen, setIsFullscreen] = useState(() => Boolean(document.fullscreenElement));
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => setInstallMessage('L’installation hors ligne n’a pas pu être préparée dans ce navigateur.'));
+    }
+    const onBeforeInstall = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    const onInstalled = () => {
+      setInstallPrompt(null);
+      setInstallMessage('Hiera est installé sur cet appareil.');
+    };
+    window.addEventListener('beforeinstallprompt', onBeforeInstall);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, []);
+  async function installHiera() {
+    if (installPrompt) {
+      try {
+        await installPrompt.prompt();
+        const choice = await installPrompt.userChoice;
+        setInstallMessage(choice?.outcome === 'accepted' ? 'Installation acceptée. Hiera va apparaître sur ton appareil.' : 'Installation annulée. Tu peux réessayer quand tu veux.');
+      } catch {
+        setInstallMessage('Chrome n’a pas pu lancer l’installation. Ouvre le menu ⋮ puis choisis « Installer l’application » ou « Ajouter à l’écran d’accueil ».');
+      } finally {
+        setInstallPrompt(null);
+      }
+      return;
+    }
+    const ua = navigator.userAgent;
+    const isAppleMobile = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    setInstallMessage(isAppleMobile
+      ? 'Sur iPhone ou iPad : ouvre Hiera dans Safari, touche Partager, puis « Sur l’écran d’accueil ». Chrome sur iOS ne propose pas toujours l’installation directe.'
+      : 'Dans Chrome, ouvre le menu ⋮ puis choisis « Installer l’application » ou « Ajouter à l’écran d’accueil ». Si l’option n’apparaît pas, mets Chrome à jour et recharge Hiera.');
+  }
   useEffect(() => {
     const syncFullscreen = () => setIsFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener('fullscreenchange', syncFullscreen);
@@ -179,6 +219,11 @@ export default function App() {
     brandTapRef.current.count += 1;
     if (brandTapRef.current.count >= 7) {
       brandTapRef.current.count = 0;
+      if (!isAdmin) {
+        setDeveloperNotice('Le Developer Studio est réservé au compte développeur autorisé.');
+        window.setTimeout(() => setDeveloperNotice(''), 3500);
+        return;
+      }
       setDeveloperMode(true);
       setDeveloperOpen(true);
       setDeveloperTab('overview');
@@ -855,7 +900,7 @@ export default function App() {
     localStorage.removeItem('hiera-conversations');
   }
 
-  const settingsItems = [["account","Compte et connexion","Compte Google, session et profil","◉"],["parental","Contrôle parental","Préférences de réponse et ressources familiales","⌂"],["wellbeing","Sécurité et bien-être","Sécurité du compte et protection des données","♡"],["usage","Utilisation","Activité et statistiques locales","▤"],["billing","Facturation","État des achats et abonnements","€"],["general","Général","Langue et comportement de la touche Entrée","⚙"],["theme","Thème","Apparence claire ou sombre","◐"],["notifications","Notifications","Préférences de notification","♢"],["voice","Voix","Lecture vocale des réponses","♫"],["personalization","Personnalisation","Nom et style de Hiera","✧"],["companion","Compagnon","État des fonctions du compagnon","◉"],["history","Chats et archivés","Historique et conversations archivées","▣"],["storage","Stockage et données","Gestion des conversations locales","▤"],["plugins","Plugins","Extensions disponibles","▦"],["preferences","Modèles IA","Choix du modèle de conversation","✧"]];
+  const settingsItems = [["account","Compte et connexion","Compte Google, session et profil","◉"],["parental","Contrôle parental","Préférences de réponse et ressources familiales","⌂"],["wellbeing","Sécurité et bien-être","Sécurité du compte et protection des données","♡"],["usage","Utilisation","Activité et statistiques locales","▤"],["billing","Facturation","État des achats et abonnements","€"],["general","Général","Langue et comportement de la touche Entrée","⚙"],["theme","Thème","Apparence claire ou sombre","◐"],["notifications","Notifications","Préférences de notification","♢"],["voice","Voix","Lecture vocale des réponses","♫"],["personalization","Personnalisation","Nom et style de Hiera","✧"],["companion","Compagnon","État des fonctions du compagnon","◉"],["history","Chats et archivés","Historique et conversations archivées","▣"],["storage","Stockage et données","Gestion des conversations locales","▤"],["plugins","Plugins","Extensions disponibles","▦"],["preferences","Modèles IA","Choix du modèle de conversation","✧"],["install","Installer Hiera","Ajouter Hiera à l’écran d’accueil de cet appareil","⇩"]];
   const settingsTitles: Record<string, string> = Object.fromEntries([['home','Paramètres'], ...settingsItems.map(([id,title]) => [id,title])]);
 
   if (!googleUser) {
@@ -949,8 +994,8 @@ export default function App() {
             {developerTab === 'avatars' && <div className="developer-settings-grid"><div className="developer-feature"><strong>Compagnon à personnaliser</strong><p>Choisis le compagnon dont tu veux préparer la personnalisation.</p><select value={settingsValues.devSelectedCompanion || activeCompanionId} onChange={(e) => updateSetting('devSelectedCompanion',e.target.value)}>{companions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div><div className="developer-feature"><strong>Style visuel souhaité</strong><p>Enregistre un style de référence pour la prochaine étape du moteur d’avatar.</p><select value={settingsValues.devAvatarStyle || 'robot'} onChange={(e) => updateSetting('devAvatarStyle',e.target.value)}><option value="robot">Robot 3D</option><option value="realistic">Humanoïde réaliste</option><option value="toon">Toon 3D</option><option value="hologram">Hologramme</option></select></div><div className="developer-feature"><strong>Couleur principale</strong><p>Couleur de référence pour le prochain système de matériaux 3D.</p><input type="color" value={settingsValues.devAvatarColor || '#9b65ff'} onChange={(e) => updateSetting('devAvatarColor',e.target.value)} /></div><div className="developer-feature"><strong>Animations</strong><p>Préférences pour les animations du compagnon.</p><select value={settingsValues.devAvatarMotion || 'normal'} onChange={(e) => updateSetting('devAvatarMotion',e.target.value)}><option value="reduced">Réduites</option><option value="normal">Naturelles</option><option value="expressive">Expressives</option></select></div><p className="developer-security-note">Ces préférences sont enregistrées. Leur application directe au modèle 3D nécessitera le raccordement du moteur d’avatar à ces paramètres.</p></div>}
             {developerTab === 'interface' && <div className="developer-settings-grid"><div className="developer-feature"><strong>Thème de Hiera</strong><p>Changer immédiatement l’apparence générale.</p><select value={settingsValues.theme || 'dark'} onChange={(e) => updateSetting('theme',e.target.value)}><option value="dark">Sombre violet</option><option value="light">Clair</option></select></div><div className="developer-feature"><strong>Nom affiché de l’assistant</strong><p>Nom transmis au modèle pour les prochaines réponses.</p><input maxLength={40} value={settingsValues.assistantName || 'Hiera'} onChange={(e) => updateSetting('assistantName',e.target.value)} /></div><div className="developer-feature"><strong>Style des réponses</strong><p>Définit le ton des prochaines conversations.</p><select value={settingsValues.replyStyle || 'friendly'} onChange={(e) => updateSetting('replyStyle',e.target.value)}><option value="friendly">Naturel et amical</option><option value="concise">Concis</option><option value="detailed">Détaillé</option></select></div></div>}
             {developerTab === 'companions' && <div className="developer-settings-grid"><div className="developer-feature"><strong>Compagnon actif</strong><p>Changer le compagnon utilisé dans la conversation.</p><select value={activeCompanionId} onChange={(e) => setActiveCompanionId(e.target.value)}>{companions.map((item) => <option key={item.id} value={item.id}>{item.name} — {item.role}</option>)}</select></div><div className="developer-feature"><strong>Profil de personnalité</strong><p>Choisis une orientation pour les prochaines réponses.</p><select value={settingsValues.devPersonality || 'balanced'} onChange={(e) => updateSetting('devPersonality',e.target.value)}><option value="balanced">Équilibrée</option><option value="creative">Créative</option><option value="technical">Technique</option><option value="teacher">Pédagogue</option></select></div><p className="developer-security-note">La création de nouveaux compagnons sera ajoutée lorsque le système de profils personnalisés sera prêt.</p></div>}
-            {developerTab === 'apis' && <div className="developer-settings-grid"><div className="developer-feature"><strong>Fournisseur IA actuel</strong><p>Le modèle actuellement sélectionné dans Hiera.</p><select value={model} onChange={(e) => setModel(e.target.value)}><option value="groq:openai/gpt-oss-20b">GPT-OSS 20B · Groq</option><option value="groq:openai/gpt-oss-120b">GPT-OSS 120B · Groq</option></select></div><div className="developer-feature"><strong>Ajouter une API externe</strong><p>Les clés API ne doivent pas être saisies ni conservées dans le navigateur. Elles devront être ajoutées dans les variables d’environnement privées du serveur.</p><a href="https://dashboard.render.com/web/srv-dbunvn6k1f9s73as351g" target="_blank" rel="noreferrer" className="developer-link">Ouvrir les variables privées Render ↗</a></div><p className="developer-security-note">Ne colle jamais une clé secrète dans le chat, dans le code frontend ou dans GitHub. Cette rubrique est prête à accueillir un gestionnaire de fournisseurs sécurisé côté serveur.</p></div>}
-            {developerTab === 'tools' && <div className="developer-settings-grid"><div className="developer-feature"><strong>Informations navigateur</strong><p>{navigator.userAgent}</p><small>Langue : {navigator.language} · Écran : {window.screen.width} × {window.screen.height}</small></div><div className="developer-feature"><strong>État de l’environnement</strong><p>Mode développeur activé sur cet appareil.</p><small>Compte connecté : {googleUser?.email || 'Non disponible'} · Modèle : {model}</small></div><div className="developer-feature"><strong>Réinitialiser les préférences développeur</strong><p>Efface uniquement les réglages expérimentaux de cet appareil.</p><button type="button" className="developer-danger" onClick={() => { if (!window.confirm('Réinitialiser les préférences du Developer Studio ?')) return; setSettingsValues((current) => { const next = {...current}; Object.keys(next).filter((key) => key.startsWith('dev')).forEach((key) => delete next[key]); return next; }); }}>Réinitialiser</button></div></div>}
+            {developerTab === 'apis' && <div className="developer-settings-grid"><div className="developer-feature"><strong>Fournisseur IA actuel</strong><p>Le modèle actuellement sélectionné dans Hiera.</p><select value={model} onChange={(e) => setModel(e.target.value)}><option value="groq:openai/gpt-oss-20b">GPT-OSS 20B · Groq</option><option value="groq:openai/gpt-oss-120b">GPT-OSS 120B · Groq</option></select></div><div className="developer-feature"><strong>Ajouter une API externe</strong><p>Les clés API ne doivent pas être saisies ni conservées dans le navigateur. Elles devront être ajoutées dans les variables d’environnement privées du serveur.</p><p>La configuration technique est gérée uniquement par le développeur depuis un environnement privé. Aucun accès à Render ou aux secrets n’est fourni dans Hiera.</p></div><p className="developer-security-note">Ne colle jamais une clé secrète dans le chat, dans le code frontend ou dans GitHub. Cette rubrique est prête à accueillir un gestionnaire de fournisseurs sécurisé côté serveur.</p></div>}
+            {developerTab === 'tools' && <div className="developer-settings-grid"><div className="developer-feature"><strong>Informations navigateur</strong><p>{navigator.userAgent}</p><small>Langue : {navigator.language} · Écran : {window.screen.width} × {window.screen.height}</small></div><div className="developer-feature"><strong>État de l’environnement</strong><p>Mode développeur activé sur cet appareil.</p><small>Session : active · Modèle : {model}</small></div><div className="developer-feature"><strong>Réinitialiser les préférences développeur</strong><p>Efface uniquement les réglages expérimentaux de cet appareil.</p><button type="button" className="developer-danger" onClick={() => { if (!window.confirm('Réinitialiser les préférences du Developer Studio ?')) return; setSettingsValues((current) => { const next = {...current}; Object.keys(next).filter((key) => key.startsWith('dev')).forEach((key) => delete next[key]); return next; }); }}>Réinitialiser</button></div></div>}
           </div><footer className="developer-footer"><span>Hiera Developer Studio · Préférences locales</span><button type="button" onClick={() => { setDeveloperOpen(false); setDeveloperMode(false); setDeveloperNotice('Mode développeur désactivé.'); window.setTimeout(() => setDeveloperNotice(''),2500); }}>Désactiver le mode développeur</button></footer>
         </section></div>}
         {adminPanel && adminData && <div className="admin-overlay" role="dialog" aria-modal="true" aria-label="Hiera Control">
@@ -1013,6 +1058,7 @@ export default function App() {
             {settingsPage !== 'home' && <button className="settings-back" onClick={() => setSettingsPage('home')}>← Retour aux paramètres</button>}
             <p className="eyebrow">ESPACE PERSONNEL</p>
             <h1>{settingsTitles[settingsPage] || 'Paramètres'}</h1>
+            {settingsPage === 'install' && <div className="settings-detail"><div className="settings-feature-card"><strong>Installer Hiera sur cet appareil</strong><p>Ajoute Hiera à ton écran d’accueil pour le retrouver comme une application, avec sa propre icône et une fenêtre dédiée.</p><button type="button" className="settings-primary-button" onClick={() => void installHiera()}>{installPrompt ? 'Installer Hiera' : 'Voir comment installer Hiera'}</button>{installMessage && <p className="settings-description" role="status">{installMessage}</p>}<small>Sur Android, utilise de préférence Chrome. Sur iPhone et iPad, l’ajout à l’écran d’accueil se fait depuis le menu de partage de Safari.</small></div></div>}
             {settingsPage === 'home' && <>
               <p className="settings-intro">Choisis une rubrique pour gérer ton espace Hiera.</p>
               <div className="settings-home-grid">{settingsItems.map(([id,title,description,icon]) => <button className="settings-home-button" key={id} onClick={() => { setSettingsPage(id); if (id === 'wellbeing') setWellbeingSection('security'); }}><span className="settings-home-icon">{icon}</span><strong>{title}</strong><small>{description}</small></button>)}</div>
@@ -1053,8 +1099,7 @@ export default function App() {
                 <div className="settings-feature-card">
                   <strong>Clés API et revue de code</strong>
                   <p>Les clés API et mots de passe techniques doivent rester dans les variables privées de l'hébergeur. Ne les ajoute jamais au code public.</p>
-                  <a className="settings-text-link" href="https://dashboard.render.com/web/srv-dbunvn6k1f9s73as351g" target="_blank" rel="noreferrer">Ouvrir les paramètres privés Render ↗</a>
-                  <a className="settings-text-link" href="https://github.com/wylhemjustine13-bit/Hiera" target="_blank" rel="noreferrer">Ouvrir le dépôt pour la revue de code ↗</a>
+                  <p>Les accès à l’hébergement, au dépôt de code et aux secrets sont réservés au développeur et ne sont pas accessibles depuis l’application.</p>
                 </div>
                 <div className="settings-feature-card">
                   <strong>Bien-être</strong>
@@ -1137,7 +1182,7 @@ export default function App() {
                 <div className="settings-feature-heading"><span className="security-feature-icon">◉</span><div><strong>Session Google</strong><small>{googleUser ? 'Session active' : 'Aucune session active'}</small></div></div>
                 {googleUser && <button className="settings-primary-button" onClick={logoutGoogle}>Déconnecter le compte Google</button>}
               </div>
-              <div className="settings-feature-card"><strong>Clés API et mots de passe</strong><p>Les clés API et mots de passe techniques doivent rester dans les variables privées de Render. Ne les ajoute jamais au code public.</p><a className="settings-text-link" href="https://dashboard.render.com/web/srv-dbunvn6k1f9s73as351g" target="_blank" rel="noreferrer">Ouvrir les paramètres privés Render ↗</a><a className="settings-text-link" href="https://github.com/wylhemjustine13-bit/Hiera" target="_blank" rel="noreferrer">Ouvrir le dépôt pour la revue de code ↗</a></div>
+              <div className="settings-feature-card"><strong>Clés API et mots de passe</strong><p>Les clés API et mots de passe techniques doivent rester dans les variables privées de Render. Ne les ajoute jamais au code public.</p><p>Les accès à l’hébergement, au dépôt de code et aux secrets sont réservés au développeur et ne sont pas accessibles depuis l’application.</p></div>
               <div className="settings-feature-card"><strong>Protection de la session</strong><p>La connexion Google identifie ton compte. Hiera ne dispose pas encore d'un verrouillage par code ni d'une fonction de discussion verrouillée.</p></div>
             </div>}
             {settingsPage === 'preferences' && <div className="settings-detail">
