@@ -822,6 +822,18 @@ export default function App() {
           <p className="auth-switch">{authMode === 'register' ? 'Tu as déjà un compte ?' : 'Pas encore de compte ?'} <button type="button" onClick={() => { setAuthMode(authMode === 'register' ? 'login' : 'register'); setAuthError(''); }}>{authMode === 'register' ? 'Se connecter' : 'Créer un compte'}</button></p>
           <p className="auth-legal">Garde ton mot de passe confidentiel et ne le partage avec personne.</p>
         </section>
+        <section className="public-seo-content" aria-labelledby="hiera-public-title">
+          <p className="public-seo-eyebrow">ASSISTANT INTELLIGENT EN LIGNE</p>
+          <h1 id="hiera-public-title">Hiera, votre assistant IA pour discuter, créer et apprendre</h1>
+          <p className="public-seo-lead">Hiera est un assistant d’intelligence artificielle accessible en ligne. Posez vos questions, échangez avec un compagnon IA et avancez dans vos idées depuis une interface simple.</p>
+          <div className="public-seo-grid">
+            <article><span aria-hidden="true">✦</span><h2>Discutez avec une IA</h2><p>Obtenez de l’aide pour comprendre un sujet, réfléchir à un problème, trouver des idées ou organiser vos projets.</p></article>
+            <article><span aria-hidden="true">🤖</span><h2>Choisissez votre compagnon</h2><p>Retrouvez Hiera, Willy, Nova, Pixel, Luna et Atlas, avec des rôles adaptés à différents sujets et usages.</p></article>
+            <article><span aria-hidden="true">▤</span><h2>Travaillez avec vos fichiers</h2><p>Ajoutez des documents compatibles, comme des PDF, des fichiers Word ou Excel, pour en consulter le contenu avec l’assistant.</p></article>
+            <article><span aria-hidden="true">✎</span><h2>Écrivez et apprenez</h2><p>Préparez et mettez en forme vos textes, demandez des explications et créez des questionnaires pour réviser un sujet.</p></article>
+          </div>
+          <p className="public-seo-footer">Découvrez Hiera et connectez-vous pour commencer une conversation.</p>
+        </section>
       </main>
     );
   }
