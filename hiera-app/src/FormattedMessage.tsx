@@ -26,7 +26,7 @@ function inline(text: string, prefix = 'x'): React.ReactNode[] {
   return result;
 }
 
-export default function FormattedMessage({ content }: { content: string }) {
+function FormattedMessage({ content }: { content: string }) {
   const lines = content.replace(/\r/g, '').split('\n');
   const output: React.ReactNode[] = [];
   let paragraph: string[] = [];
@@ -77,3 +77,5 @@ export default function FormattedMessage({ content }: { content: string }) {
   flushList();
   return <div className="formatted-message">{output}</div>;
 }
+
+export default React.memo(FormattedMessage);
