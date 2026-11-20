@@ -1,190 +1,62 @@
-/* HIERA — barre d'écriture extra-fine */
-.composer{
-  max-width:880px!important;
-  margin:6px auto 3px!important;
-  padding:6px 12px 5px!important;
-  border-radius:14px!important;
-}
-.composer textarea{
-  min-height:25px!important;
-  max-height:105px!important;
-  padding:3px 4px!important;
-  line-height:1.4!important;
-  font-size:13px!important;
-}
-.composer-footer{
-  padding-top:4px!important;
-  min-height:29px!important;
-}
-.composer-actions>button,.attach-toggle,.voice-toggle{
-  width:30px!important;height:30px!important;border-radius:9px!important;
-}
-.composer-footer>span{font-size:9px!important}
-.attachment-hint{margin:4px 0 0!important;font-size:8px!important}
-@media(max-width:760px){
-  .composer{padding:5px 9px 4px!important;margin:4px auto 2px!important}
-  .composer textarea{min-height:23px!important;max-height:90px!important;font-size:12px!important}
-  .composer-footer{padding-top:4px!important;min-height:27px!important}
-  .composer-actions>button,.attach-toggle,.voice-toggle{width:29px!important;height:29px!important}
-  .attachment-hint{margin-top:3px!important}
-}
-
-/* Barre compacte : texte et actions sur une seule ligne */
-.composer{padding:5px 9px!important;margin:4px auto 0!important}
-.composer-input-row{display:flex;align-items:center;gap:8px;width:100%;min-width:0}
-.composer-input-row textarea{flex:1;min-width:0;min-height:30px!important;max-height:105px!important;padding:5px 4px!important;margin:0!important}
-.composer-input-row .composer-actions{flex:none;align-self:center;gap:6px}
-.composer-input-row .composer-actions>button,.composer-input-row .attach-toggle,.composer-input-row .voice-toggle{width:30px!important;height:30px!important}
-.composer-footer{display:none!important}
-.composer .attachment-list{margin-bottom:5px}
-.composer .error-message{margin:4px 0 0}
-.disclaimer{margin:0 auto!important;padding:0 0 2px!important}
-.chat-layout{padding-bottom:0!important}
-@media(max-width:760px){
- .composer{padding:4px 7px!important;margin:3px auto 0!important}
- .composer-input-row{gap:5px}
- .composer-input-row textarea{min-height:27px!important;padding:4px 3px!important}
- .composer-input-row .composer-actions{gap:4px}
- .composer-input-row .composer-actions>button,.composer-input-row .attach-toggle,.composer-input-row .voice-toggle{width:28px!important;height:28px!important}
-}
-
-/* Descendre légèrement la barre vers le bas de la fenêtre */
-.composer{transform:translateY(12px)!important}
-@media(max-width:760px){.composer{transform:translateY(8px)!important}}
-
-
-/* Adaptation complète : ordinateur, tablette et téléphone */
-.shell,.workspace,.workspace-content,.chat-layout,.chat-column,.conversation{min-width:0}
-.workspace{width:100%;max-width:none}
-.workspace-content{width:100%;min-width:0;flex:1;display:flex;flex-direction:column}
-.chat-layout{width:100%;min-width:0;flex:1;display:flex;justify-content:center}
-.chat-column{width:100%;max-width:1050px;min-width:0;min-height:0;display:flex;flex-direction:column;flex:1}
-.conversation{width:100%;min-width:0}
-.messages,.message-body{min-width:0;overflow-wrap:anywhere}
-.message-body img,.message-body pre,.message-body table{max-width:100%;overflow-x:auto}
-.settings-page,.settings-detail,.settings-feature-card{min-width:0;max-width:100%}
-.settings-feature-card p,.settings-description{overflow-wrap:anywhere}
-.admin-panel,.writing-panel,.document-panel{width:min(100%,980px);max-height:calc(100dvh - 32px);overflow:auto}
-img,video,iframe{max-width:100%}
-
-@media(max-width:1100px){
-  .workspace{padding-left:22px;padding-right:22px}
-  .shell{grid-template-columns:230px minmax(0,1fr)}
-  .sidebar{padding-left:14px;padding-right:14px}
-  .quick-prompts{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .topbar{gap:8px}
-  .plan-badge,.private-toggle,.fullscreen-toggle{font-size:11px}
-}
-@media(max-width:760px){
-  .shell{display:grid!important;grid-template-columns:minmax(0,1fr)!important;width:100%;height:100dvh;min-height:0}
-  .shell>.sidebar{position:fixed;left:0;top:0;bottom:0;width:min(84vw,300px);height:100dvh;min-width:0;padding:20px 15px;display:flex;flex-direction:column;overflow-y:auto;z-index:50}
-  .sidebar-collapsed>.sidebar{transform:translateX(-105%);opacity:0;pointer-events:none}
-  .sidebar-dismiss-zone{position:fixed;inset:0;background:#08051299;border:0;z-index:40}
-  .workspace{grid-column:1;width:100%;height:100dvh;min-height:0;padding:0 12px 10px;overflow:hidden}
-  .topbar{height:auto;min-height:52px;flex-wrap:wrap;gap:7px;padding:7px 0}
-  .mobile-menu-button{width:34px;height:34px;flex:none}
-  .topbar-title{font-size:12px;flex:1;min-width:60px}
-  .companion-picker{max-width:45%;min-width:0}
-  .companion-picker select{max-width:100%;min-width:0}
-  .admin-open-button{max-width:130px;overflow:hidden;text-overflow:ellipsis}
-  .workspace-content{min-height:0}
-  .chat-layout,.chat-column{min-height:0}
-  .conversation{min-height:0;overflow-y:auto}
-  .message{max-width:96%;font-size:13px}
-  .settings-page{padding:16px 0 28px;max-height:calc(100dvh - 62px);overflow-y:auto}
-  .settings-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .settings-shortcuts button{min-height:90px}
-  .integration-grid,.integration-list,.privacy-list{grid-template-columns:minmax(0,1fr)}
-  .composer{width:100%;max-width:100%}
-  .disclaimer{font-size:9px}
-}
-@media(max-width:480px){
-  .workspace{padding-left:9px;padding-right:9px}
-  .topbar{gap:5px}
-  .topbar-title{font-size:11px}
-  .companion-picker{max-width:42%}
-  .plan-badge{padding:4px 6px;font-size:9px}
-  .private-toggle{padding:5px 7px;font-size:10px}
-  .fullscreen-toggle{padding:6px 7px}
-  .quick-prompts{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
-  .quick-prompts button{min-height:78px;padding:9px 5px;font-size:10px}
-  .compact-welcome h1{font-size:30px}
-  .compact-welcome .subtitle{font-size:11px}
-  .message{max-width:100%;gap:6px;font-size:12px}
-  .message p{padding:10px 12px}
-  .composer{padding:4px 6px!important}
-  .composer-input-row{gap:4px}
-  .composer-input-row textarea{font-size:12px!important;min-height:28px!important}
-  .composer-input-row .composer-actions{gap:3px}
-  .composer-input-row .composer-actions>button,.composer-input-row .attach-toggle,.composer-input-row .voice-toggle{width:27px!important;height:27px!important;min-width:27px}
-  .stop-generation{max-width:70px;overflow:hidden;font-size:9px}
-  .settings-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
-  .settings-shortcuts button{padding:10px;min-height:82px}
-  .settings-page h1{font-size:27px}
-  .settings-feature-card{padding:12px}
-  .writing-toolbar{flex-wrap:wrap}
-  .writing-footer{flex-wrap:wrap;gap:6px}
-  .admin-panel{padding:12px}
-}
-@media(max-width:350px){
-  .workspace{padding-left:6px;padding-right:6px}
-  .topbar-title{display:none}
-  .companion-picker{max-width:38%}
-  .quick-prompts button{font-size:9px}
-  .composer-input-row .composer-actions>button,.composer-input-row .attach-toggle,.composer-input-row .voice-toggle{width:25px!important;height:25px!important;min-width:25px}
-}
-
-
-/* Présentation publique de Hiera */
-.auth-screen{gap:42px!important;padding:42px 22px 64px!important}
-.public-seo-content{width:min(100%,1080px);margin:0 auto;padding:42px clamp(20px,5vw,64px);border:1px solid rgba(166,132,255,.18);border-radius:28px;background:radial-gradient(ellipse at 50% 0%,rgba(111,72,190,.18),transparent 58%),rgba(17,14,30,.82);box-shadow:0 24px 80px rgba(0,0,0,.22);color:#f4efff}
-.public-seo-eyebrow{text-align:center;color:#bda2ff;font-size:11px;font-weight:800;letter-spacing:.2em}
-.public-seo-content>h1{text-align:center;max-width:760px;margin:12px auto 14px;font-size:clamp(27px,4vw,43px);line-height:1.12;letter-spacing:-.04em}
-.public-seo-lead{text-align:center;max-width:720px;margin:0 auto;color:#c7bfd8;font-size:16px;line-height:1.8}
-.public-seo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:32px 0}
-.public-seo-grid article{padding:22px;border:1px solid rgba(190,164,255,.14);border-radius:18px;background:rgba(255,255,255,.035)}
-.public-seo-grid article>span{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:rgba(155,112,255,.15);font-size:20px}
-.public-seo-grid h2{margin:14px 0 7px;font-size:17px;color:#fff}
-.public-seo-grid p{margin:0;color:#bdb5cc;font-size:14px;line-height:1.7}
-.public-seo-footer{text-align:center;margin:26px 0 0;color:#cbbaff;font-weight:650}
-@media(max-width:650px){.auth-screen{padding:22px 14px 40px!important;gap:26px!important}.public-seo-content{padding:28px 18px;border-radius:20px}.public-seo-grid{grid-template-columns:1fr;gap:10px;margin:24px 0}.public-seo-lead{font-size:14px}}
-
-
-/* Fond anime subtil pour la vitrine publique Hiera */
-.auth-screen{
+/* HIERA — fond animé plus vivant sur la vitrine et l'espace de discussion */
+.auth-screen,.shell{
   position:relative;
   isolation:isolate;
-  background-color:#0b0815!important;
+  background-color:#090713!important;
   background-image:
-    radial-gradient(ellipse at 15% 20%,rgba(111,67,214,.24),transparent 38%),
-    radial-gradient(ellipse at 85% 35%,rgba(34,120,210,.18),transparent 36%),
-    radial-gradient(ellipse at 50% 100%,rgba(148,72,220,.16),transparent 42%),
-    linear-gradient(135deg,#0b0815 0%,#100c20 48%,#090d19 100%)!important;
-  background-size:150% 150%!important;
-  animation:hiera-ambient-drift 22s ease-in-out infinite alternate;
+    radial-gradient(ellipse at 12% 18%,rgba(128,74,255,.42),transparent 42%),
+    radial-gradient(ellipse at 88% 28%,rgba(38,145,255,.32),transparent 40%),
+    radial-gradient(ellipse at 52% 92%,rgba(192,65,255,.27),transparent 44%),
+    linear-gradient(125deg,#090713 0%,#15102b 48%,#080f20 100%)!important;
+  background-size:180% 180%!important;
+  animation:hiera-color-flow 13s ease-in-out infinite alternate!important;
 }
-.auth-screen::before{
+.auth-screen::before,.shell::before{
   content:"";
   position:fixed;
-  inset:-20%;
+  inset:-35%;
+  z-index:-1;
+  pointer-events:none;
+  opacity:.8;
+  background:
+    radial-gradient(ellipse at 20% 30%,rgba(151,91,255,.30) 0%,transparent 27%),
+    radial-gradient(ellipse at 75% 25%,rgba(48,155,255,.25) 0%,transparent 29%),
+    radial-gradient(ellipse at 58% 78%,rgba(213,73,255,.22) 0%,transparent 30%),
+    radial-gradient(circle,rgba(190,165,255,.42) 0 1px,transparent 1.8px);
+  background-size:100% 100%,100% 100%,100% 100%,58px 58px;
+  filter:blur(1px);
+  animation:hiera-orbital-glow 17s ease-in-out infinite alternate,
+            hiera-star-drift 28s linear infinite;
+}
+.auth-screen::after,.shell::after{
+  content:"";
+  position:fixed;
+  inset:0;
   z-index:-1;
   pointer-events:none;
   opacity:.28;
-  background:
-    radial-gradient(circle at 25% 35%,rgba(173,130,255,.2) 0 1px,transparent 2px),
-    radial-gradient(circle at 70% 65%,rgba(92,184,255,.22) 0 1px,transparent 2px);
-  background-size:82px 82px,117px 117px;
-  animation:hiera-particles-drift 38s linear infinite;
+  background:linear-gradient(115deg,transparent 25%,rgba(172,129,255,.12) 48%,transparent 68%);
+  background-size:220% 100%;
+  animation:hiera-light-sweep 9s ease-in-out infinite;
 }
-@keyframes hiera-ambient-drift{
+@keyframes hiera-color-flow{
   0%{background-position:0% 20%}
-  50%{background-position:75% 55%}
-  100%{background-position:100% 85%}
+  50%{background-position:70% 80%}
+  100%{background-position:100% 10%}
 }
-@keyframes hiera-particles-drift{
-  from{transform:translate3d(0,0,0)}
-  to{transform:translate3d(42px,-34px,0)}
+@keyframes hiera-orbital-glow{
+  0%{transform:translate3d(-4%,2%,0) scale(.94) rotate(0deg)}
+  50%{transform:translate3d(3%,-3%,0) scale(1.05) rotate(8deg)}
+  100%{transform:translate3d(5%,4%,0) scale(.98) rotate(-6deg)}
+}
+@keyframes hiera-star-drift{
+  from{background-position:0 0,0 0,0 0,0 0}
+  to{background-position:0 0,0 0,0 0,116px -116px}
+}
+@keyframes hiera-light-sweep{
+  0%{background-position:120% 0}
+  100%{background-position:-120% 0}
 }
 @media(prefers-reduced-motion:reduce){
-  .auth-screen,.auth-screen::before{animation:none!important}
+  .auth-screen,.shell,.auth-screen::before,.shell::before,.auth-screen::after,.shell::after{animation:none!important}
 }
