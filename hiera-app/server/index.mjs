@@ -224,6 +224,7 @@ const server = createServer(async (req, res) => {
       }
       authAttempts.delete(ip);
       const accountUser = { sub: 'email:' + account.id, email: account.email, name: account.display_name || '' };
+      await pool.query('DELETE FROM hiera_deleted_accounts WHERE user_id = $1 OR LOWER(email) = LOWER($2)', [accountUser.sub, accountUser.email]);
       if (await saveUserProfile(accountUser)) return send(res, 403, { error: 'Ce compte est suspendu. Contacte le support Hiera.' });
       const session = signSession({ sub: accountUser.sub, email: accountUser.email, name: accountUser.name, picture: '', exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 });
       res.setHeader('Set-Cookie', 'hiera_session=' + encodeURIComponent(session) + '; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=604800');
@@ -265,6 +266,7 @@ const server = createServer(async (req, res) => {
         return send(res, 401, { error: 'Le compte Google n’a pas pu être vérifié.' });
       }
       const googleUser = { sub: profile.sub, email: profile.email, name: profile.name || '' };
+      await pool.query('DELETE FROM hiera_deleted_accounts WHERE user_id = $1 OR LOWER(email) = LOWER($2)', [googleUser.sub, googleUser.email]);
       if (await saveUserProfile(googleUser)) return send(res, 403, { error: 'Ce compte est suspendu. Contacte le support Hiera.' });
       const session = signSession({
         sub: profile.sub, email: profile.email, name: profile.name || '',
@@ -385,6 +387,11 @@ const server = createServer(async (req, res) => {
       banned BOOLEAN NOT NULL DEFAULT FALSE,
       ban_reason TEXT NOT NULL DEFAULT ''
     )`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS hiera_deleted_accounts (
+      user_id TEXT PRIMARY KEY,
+      email TEXT NOT NULL,
+      deleted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`);
     await pool.query(`CREATE TABLE IF NOT EXISTS hiera_password_reset_requests (
       id BIGSERIAL PRIMARY KEY,
       email TEXT NOT NULL,
@@ -430,6 +437,11 @@ const server = createServer(async (req, res) => {
 
   async function saveUserProfile(user) {
     await ensureAdminTables();
+    const deleted = await pool.query(
+      'SELECT 1 FROM hiera_deleted_accounts WHERE user_id = $1 OR LOWER(email) = LOWER($2) LIMIT 1',
+      [user.sub, String(user.email || '')],
+    );
+    if (deleted.rowCount) return true;
     await pool.query(
       `INSERT INTO hiera_user_profiles (user_id, email, display_name, created_at, last_seen_at)
        VALUES ($1, $2, $3, NOW(), NOW())
@@ -1057,6 +1069,10 @@ const server = createServer(async (req, res) => {
         const client = await pool.connect();
         try {
           await client.query('BEGIN');
+          await client.query(
+            'INSERT INTO hiera_deleted_accounts (user_id, email) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, deleted_at = NOW()',
+            [userId, target.rows[0].email],
+          );
           await client.query('DELETE FROM hiera_usage WHERE user_id = $1', [userId]);
           await client.query('DELETE FROM hiera_help_requests WHERE user_id = $1', [userId]);
           await client.query('DELETE FROM hiera_safety_flags WHERE user_id = $1', [userId]);
@@ -1064,6 +1080,10 @@ const server = createServer(async (req, res) => {
           if (userId.startsWith('email:')) {
             const accountId = userId.slice('email:'.length);
             if (/^\\d+$/.test(accountId)) await client.query('DELETE FROM hiera_accounts WHERE id = $1', [accountId]);
+          }
+          await client.query('DELETE FROM hiera_accounts WHERE LOWER(email) = LOWER($1)', [target.rows[0].email]);
+          await client.query('DELETE FROM hiera_integrations WHERE user_id = $1', [userId]);
+          if (userId.startsWith('email:')) {
           }
           await client.query('DELETE FROM hiera_user_profiles WHERE user_id = $1', [userId]);
           await client.query('COMMIT');
