@@ -580,7 +580,11 @@ export default function App() {
     recognition.interimResults = false;
     recognition.onresult = (event) => {
       const transcript = Array.from(event.results as ArrayLike<any>).map((result: any) => result[0]?.transcript || '').join(' ').trim();
-      if (transcript) void sendText(transcript, true);
+      if (transcript) {
+        stopLiveVoice();
+        setDraft((current) => [current.trim(), transcript].filter(Boolean).join(current.trim() ? ' ' : ''));
+        setVoiceStatus('Texte ajouté dans la barre de message');
+      }
     };
     recognition.onerror = (event) => { setVoiceStatus(event.error === 'not-allowed' ? "Autorisation du micro refusée" : "Je n'ai pas compris, réessaie"); };
     recognition.onend = () => { recognitionRef.current = null; if (liveVoiceRef.current && !busyRef.current) window.setTimeout(() => { if (liveVoiceRef.current && !busyRef.current && !recognitionRef.current) startVoiceListening(); }, 500); };
