@@ -35,21 +35,15 @@ type Conversation = { id: string; title: string; messages: Message[]; updatedAt:
 type HieraAttachment = { id: string; name: string; mimeType: string; size: number; dataUrl?: string; text?: string; previewUrl?: string };
 
 function CompanionBust({ id, name, compact = false }: { id: string; name: string; compact?: boolean }) {
-  return <div className={"companion-bust companion-" + id + (compact ? " is-compact" : "")} role="img" aria-label={"Portrait animé de " + name}>
-    <svg viewBox="0 0 220 250" aria-hidden="true">
-      <ellipse className="bust-aura" cx="110" cy="126" rx="92" ry="112"/>
-      <path className="bust-shoulders" d="M24 250 Q30 190 72 181 L148 181 Q190 190 196 250Z"/>
-      <path className="bust-neck" d="M91 158 L129 158 L134 202 L86 202Z"/>
-      <path className="bust-face" d="M67 83 Q69 28 110 29 Q153 29 154 84 L147 137 Q137 174 110 177 Q83 174 73 137Z"/>
-      <path className="bust-hair-back" d="M59 105 Q35 27 102 16 Q168 8 165 90 L157 147 Q148 113 146 76 Q111 102 72 77 L67 143Z"/>
-      <path className="bust-hair-front" d="M62 87 Q45 23 105 15 Q158 9 163 66 Q143 46 126 47 Q106 70 78 73 L72 111Z"/>
-      <path className="bust-eye" d="M81 103 Q94 91 104 104 Q94 117 81 103Z M116 104 Q128 91 140 103 Q128 117 116 104Z"/>
-      <circle className="bust-eye-glow" cx="94" cy="104" r="4"/><circle className="bust-eye-glow" cx="128" cy="104" r="4"/>
-      <path className="bust-mouth" d="M99 139 Q110 147 121 139"/>
-      <path className="bust-collar" d="M77 185 L110 215 L143 185 L156 250 L64 250Z"/>
-      <path className="bust-emblem" d="M110 211 l11 11 -11 11 -11 -11Z"/>
-      <g className="bust-accessory"><circle cx="110" cy="24" r="7"/><path d="M110 3 V15 M94 24 H102 M118 24 H126"/></g>
-    </svg>
+  return <div className={"companion-bust companion-" + id + (compact ? " is-compact" : "")} role="img" aria-label={"Compagnon 3D animé " + name}>
+    <div className="bust-3d-model">
+      <div className="bust-3d-back"/><div className="bust-3d-shoulders"/>
+      <div className="bust-3d-neck"/>
+      <div className="bust-3d-head"><div className="bust-3d-hair"/><div className="bust-3d-eyes"><i/><i/></div><div className="bust-3d-mouth"/></div>
+      <div className="bust-3d-chest"><span className="bust-3d-emblem"/></div>
+      <div className="bust-3d-side left"/><div className="bust-3d-side right"/>
+      <div className="bust-3d-light"/>
+    </div>
   </div>;
 }
 
@@ -1096,7 +1090,7 @@ export default function App() {
               {privateMode && <div className="private-notice">◉ Navigation privée activée · Cette conversation ne sera pas enregistrée dans ton historique.</div>}
               {authError && <p className="auth-error" role="alert">{authError}</p>}
               {!googleClientId && <p className="auth-hint">Connexion Google : configuration à terminer sur Render.</p>}
-              {messages.length === 0 && <div className="welcome compact-welcome"><CompanionBust id={activeCompanion.id} name={activeCompanion.name} compact /><h1>{activeCompanion.name}</h1><p className="subtitle">{activeCompanion.description}</p><div className="quick-prompts"><button type="button" onClick={() => setDraft('Aide-moi à organiser ma journée.')}><span>✦</span>Organiser ma journée</button><button type="button" onClick={() => setDraft('Explique-moi un sujet simplement.')}><span>◈</span>Apprendre quelque chose</button><button type="button" onClick={() => setDraft('Aide-moi à trouver une idée créative.')}><span>✧</span>Trouver une idée</button><button type="button" onClick={() => setDraft('Aide-moi à résoudre un problème.')}><span>⌘</span>Résoudre un problème</button></div></div>}
+              {messages.length === 0 && <div className="welcome compact-welcome"><div className="atom" aria-hidden="true"><span className="orbit"/><span className="orbit orbit-two"/><span className="orbit orbit-three"/><span className="nucleus"/></div><h1>{activeCompanion.name}</h1><p className="subtitle">{activeCompanion.description}</p><div className="quick-prompts"><button type="button" onClick={() => setDraft('Aide-moi à organiser ma journée.')}><span>✦</span>Organiser ma journée</button><button type="button" onClick={() => setDraft('Explique-moi un sujet simplement.')}><span>◈</span>Apprendre quelque chose</button><button type="button" onClick={() => setDraft('Aide-moi à trouver une idée créative.')}><span>✧</span>Trouver une idée</button><button type="button" onClick={() => setDraft('Aide-moi à résoudre un problème.')}><span>⌘</span>Résoudre un problème</button></div></div>}
               <div className="messages" aria-live="polite">
                 {messages.map((message, index) => (
                   <article className={`message ${message.role}`} key={index}>
