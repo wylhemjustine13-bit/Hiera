@@ -292,3 +292,16 @@ img,video,iframe{max-width:100%}
 @keyframes bust3d-pulse{0%,100%{opacity:.65}50%{opacity:1}}
 @media(max-width:650px){.composer-companion-stage{left:4px;bottom:12px;width:70px;height:94px}.composer-companion-stage .companion-bust.is-compact{width:70px;height:94px}.composer-companion-stage .bust-3d-model{transform:scale(.78) rotateY(-16deg);transform-origin:bottom center}.composer-input-row textarea{padding-left:68px!important}}
 @media(prefers-reduced-motion:reduce){.bust-3d-model,.bust-3d-light{animation:none!important}}
+
+
+/* Ajustement du compagnon dans la barre : entièrement visible et sans chevauchement */
+.composer-companion-stage{left:7px!important;bottom:20px!important;width:104px!important;height:116px!important;align-items:flex-end!important;overflow:visible!important}
+.composer-companion-stage .companion-bust.is-compact{width:104px!important;height:116px!important;overflow:visible!important}
+.composer-companion-stage .bust-3d-model{width:118px!important;height:164px!important;transform:scale(.70) rotateY(-16deg)!important;transform-origin:bottom center!important}
+.composer-input-row textarea{padding-left:126px!important}
+@media(max-width:650px){
+ .composer-companion-stage{left:3px!important;bottom:17px!important;width:78px!important;height:96px!important}
+ .composer-companion-stage .companion-bust.is-compact{width:78px!important;height:96px!important}
+ .composer-companion-stage .bust-3d-model{transform:scale(.56) rotateY(-16deg)!important;transform-origin:bottom center!important}
+ .composer-input-row textarea{padding-left:94px!important}
+}
