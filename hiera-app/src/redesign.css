@@ -316,3 +316,19 @@ img,video,iframe{max-width:100%}
  .composer-companion-stage{left:1px!important;bottom:4px!important;width:82px!important;height:104px!important}
  .composer-input-row textarea{padding-left:88px!important}
 }
+
+
+/* Réactions contextuelles du compagnon 3D dans la zone de saisie */
+.composer-companion-stage{overflow:visible!important}
+.companion-stage-3d{position:relative;width:100%;height:100%;overflow:visible;pointer-events:none}
+.companion-stage-3d .companion-real3d{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.companion-speech-bubble{position:absolute;left:72px;top:-9px;z-index:8;max-width:142px;padding:7px 11px;border:1px solid rgba(205,174,255,.42);border-radius:13px 13px 13px 4px;background:linear-gradient(135deg,rgba(38,29,65,.97),rgba(19,24,47,.96));box-shadow:0 7px 22px rgba(0,0,0,.28),0 0 16px rgba(177,126,255,.16);color:#f4eaff;font-size:10px;font-weight:650;white-space:nowrap;animation:companion-bubble-pop .22s ease-out both}
+.companion-speech-bubble:after{content:"";position:absolute;left:-5px;bottom:5px;width:8px;height:8px;background:#251d40;border-left:1px solid rgba(205,174,255,.42);border-bottom:1px solid rgba(205,174,255,.42);transform:rotate(45deg)}
+.companion-action-label{position:absolute;left:69px;top:5px;z-index:8;padding:6px 9px;border:1px solid rgba(111,216,255,.4);border-radius:10px;background:rgba(12,25,45,.94);color:#d9f6ff;font-size:9px;font-weight:700;white-space:nowrap;box-shadow:0 0 16px rgba(70,190,255,.16);animation:companion-bubble-pop .22s ease-out both}
+.state-analyzing .companion-real3d canvas{filter:drop-shadow(0 0 8px rgba(103,199,255,.2))}
+@keyframes companion-bubble-pop{from{opacity:0;transform:translateY(5px) scale(.92)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:650px){
+ .companion-speech-bubble{left:52px;top:-4px;max-width:116px;padding:6px 8px;font-size:9px}
+ .companion-action-label{left:49px;top:2px;padding:5px 7px;font-size:8px}
+}
+@media(prefers-reduced-motion:reduce){.companion-speech-bubble,.companion-action-label{animation:none}}
