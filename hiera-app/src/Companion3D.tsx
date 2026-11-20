@@ -10,13 +10,14 @@ const palette: Record<string, { glow: string; armor: string; face: string; trim:
   atlas: { glow: '#ffc45d', armor: '#70502b', face: '#ffe6bd', trim: '#ffdb8b' },
 };
 
-function Companion3D({ id, name, activity = 'idle' }: { id: string; name: string; activity?: 'idle' | 'typing' | 'thinking' | 'analyzing' | 'speaking' | 'listening' }) {
+function Companion3D({ id, name, activity = 'idle', colorOverride = '', avatarStyle = 'robot', motion = 'normal' }: { id: string; name: string; activity?: 'idle' | 'typing' | 'thinking' | 'analyzing' | 'speaking' | 'listening'; colorOverride?: string; avatarStyle?: string; motion?: string }) {
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const root = host.current;
     if (!root) return;
-    const colors = palette[id] || palette.hiera;
+    const baseColors = palette[id] || palette.hiera;
+    const colors = colorOverride ? { ...baseColors, glow: colorOverride, trim: colorOverride } : baseColors;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
     camera.position.set(0, 0.1, 6.6);
@@ -38,10 +39,10 @@ function Companion3D({ id, name, activity = 'idle' }: { id: string; name: string
     scene.add(robot);
     const mat = (color: string, metalness = 0.72, roughness = 0.24) =>
       new THREE.MeshStandardMaterial({ color, metalness, roughness });
-    const armor = mat(colors.armor, 0.82, 0.2);
+    const armor = mat(avatarStyle === 'toon' ? colors.armor : colors.armor, avatarStyle === 'toon' ? 0.18 : 0.82, avatarStyle === 'toon' ? 0.62 : 0.2);
     const bright = mat(colors.face, 0.58, 0.22);
     const dark = mat('#151329', 0.55, 0.3);
-    const glow = new THREE.MeshStandardMaterial({ color: colors.glow, emissive: colors.glow, emissiveIntensity: 2.6, metalness: 0.25, roughness: 0.18 });
+    const glow = new THREE.MeshStandardMaterial({ color: colors.glow, emissive: colors.glow, emissiveIntensity: avatarStyle === 'hologram' ? 3.8 : 2.6, metalness: 0.25, roughness: 0.18, wireframe: avatarStyle === 'hologram' });
     const add = (geometry: THREE.BufferGeometry, material: THREE.Material, position: [number,number,number], scale?: [number,number,number]) => {
       const mesh = new THREE.Mesh(geometry, material);
       mesh.position.set(...position);
@@ -50,8 +51,8 @@ function Companion3D({ id, name, activity = 'idle' }: { id: string; name: string
     };
 
     // Friendly orbital pilot: smooth ceramic shell, broad visor and compact mech details
-    const trim = mat(colors.trim, 0.92, 0.16);
-    const shell = new THREE.MeshPhysicalMaterial({ color: colors.face, metalness: 0.3, roughness: 0.2, clearcoat: 1 });
+    const trim = mat(colors.trim, avatarStyle === 'toon' ? 0.12 : 0.92, avatarStyle === 'toon' ? 0.68 : 0.16);
+    const shell = new THREE.MeshPhysicalMaterial({ color: colors.face, metalness: avatarStyle === 'toon' ? 0.05 : 0.3, roughness: avatarStyle === 'toon' ? 0.72 : 0.2, clearcoat: avatarStyle === 'toon' ? 0 : 1, wireframe: avatarStyle === 'hologram' });
     const visor = new THREE.MeshPhysicalMaterial({ color: '#10182d', metalness: 0.58, roughness: 0.12, clearcoat: 1 });
     const joint = mat('#182033', 0.8, 0.24);
 
@@ -138,8 +139,9 @@ function Companion3D({ id, name, activity = 'idle' }: { id: string; name: string
       const speaking = activity === 'speaking';
       const listening = activity === 'listening';
       const typing = activity === 'typing';
-      const tempo = analyzing ? 3.8 : thinking ? 3.4 : speaking ? 5.2 : listening ? 2.2 : typing ? 2.8 : 1.55;
-      const energy = analyzing ? 0.08 : thinking ? 0.16 : speaking ? 0.13 : listening ? 0.1 : typing ? 0.075 : 0.055;
+      const motionFactor = motion === 'reduced' ? 0.35 : motion === 'expressive' ? 1.65 : 1;
+      const tempo = (analyzing ? 3.8 : thinking ? 3.4 : speaking ? 5.2 : listening ? 2.2 : typing ? 2.8 : 1.55) * motionFactor;
+      const energy = (analyzing ? 0.08 : thinking ? 0.16 : speaking ? 0.13 : listening ? 0.1 : typing ? 0.075 : 0.055) * motionFactor;
       robot.position.y = Math.sin(t * tempo) * energy + (speaking ? Math.abs(Math.sin(t * 7)) * 0.035 : 0);
       robot.rotation.y = Math.sin(t * (analyzing ? 1.25 : thinking ? 1.7 : 0.7)) * (analyzing ? 0.1 : thinking ? 0.3 : listening ? 0.23 : 0.17);
       robot.rotation.x = analyzing ? -0.12 + Math.sin(t * 2.4) * 0.025 : Math.sin(t * (speaking ? 4.5 : 0.9)) * (speaking ? 0.09 : 0.025);
@@ -166,7 +168,7 @@ function Companion3D({ id, name, activity = 'idle' }: { id: string; name: string
       renderer.dispose();
       if (renderer.domElement.parentNode === root) root.removeChild(renderer.domElement);
     };
-  }, [id, activity]);
+  }, [id, activity, colorOverride, avatarStyle, motion]);
 
   const bubble = activity === 'speaking' ? 'Je te réponds…' : activity === 'listening' ? 'Je t’écoute…' : activity === 'thinking' ? 'Je réfléchis…' : '';
   return <div className={'companion-stage-3d state-' + activity}>
