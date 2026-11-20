@@ -49,40 +49,58 @@ export default function Companion3D({ id, name }: { id: string; name: string }) 
       robot.add(mesh); return mesh;
     };
 
-    // Friendly compact sci-fi companion: layered metallic armor and glass visor
-    const trim = mat(colors.trim, 0.88, 0.16);
-    const visorMat = new THREE.MeshPhysicalMaterial({ color: '#101326', metalness: 0.65, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.08 });
-    const shell = add(new THREE.SphereGeometry(0.66, 48, 36), armor, [0, 0.34, 0], [0.92, 1.08, 0.78]);
-    // Broad shoulder silhouette and chest plate
-    add(new THREE.SphereGeometry(0.78, 48, 32), armor, [0, -1.03, 0], [1.12, 0.62, 0.62]);
-    add(new THREE.BoxGeometry(0.92, 0.58, 0.16, 4, 3, 1), trim, [0, -1.12, 0.43]);
-    add(new THREE.BoxGeometry(0.78, 0.43, 0.18, 4, 3, 1), dark, [0, -1.1, 0.54]);
-    add(new THREE.OctahedronGeometry(0.14, 2), glow, [0, -1.1, 0.66]);
-    add(new THREE.CylinderGeometry(0.24, 0.28, 0.32, 32), bright, [0, -0.58, 0]);
+    // New look: expressive pearl-white android with a floating holographic face
+    const trim = mat(colors.trim, 0.9, 0.14);
+    const pearl = new THREE.MeshPhysicalMaterial({ color: colors.face, metalness: 0.34, roughness: 0.16, clearcoat: 1, clearcoatRoughness: 0.08 });
+    const faceGlass = new THREE.MeshPhysicalMaterial({ color: '#080d20', metalness: 0.38, roughness: 0.09, clearcoat: 1, clearcoatRoughness: 0.04 });
+    const darkJoint = mat('#171a30', 0.6, 0.28);
 
-    // Oversized rounded helmet with a curved dark visor
-    add(new THREE.SphereGeometry(0.58, 48, 36), bright, [0, 0.35, 0.02], [0.98, 1.02, 0.82]);
-    add(new THREE.SphereGeometry(0.61, 48, 32, 0, Math.PI * 2, 0, Math.PI * 0.56), armor, [0, 0.51, -0.02], [1.04, 1.03, 0.9]);
-    add(new THREE.SphereGeometry(0.405, 48, 32), visorMat, [0, 0.31, 0.48], [1.05, 0.64, 0.28]);
-    // Soft glowing eyes with highlights
-    for (const x of [-0.18, 0.18]) {
-      add(new THREE.SphereGeometry(0.075, 24, 18), glow, [x, 0.34, 0.72], [0.82, 1.12, 0.48]);
-      add(new THREE.SphereGeometry(0.022, 16, 12), bright, [x - 0.018, 0.37, 0.755]);
+    // Compact armored torso with layered collar and luminous heart
+    add(new THREE.SphereGeometry(0.8, 48, 32), armor, [0, -1.02, 0], [1.08, 0.62, 0.62]);
+    add(new THREE.SphereGeometry(0.62, 40, 24), pearl, [0, -0.94, 0.27], [0.96, 0.55, 0.48]);
+    add(new THREE.TorusGeometry(0.29, 0.045, 12, 48), trim, [0, -1.02, 0.68]);
+    add(new THREE.SphereGeometry(0.19, 32, 24), glow, [0, -1.02, 0.69]);
+    add(new THREE.CylinderGeometry(0.2, 0.24, 0.3, 32), darkJoint, [0, -0.54, 0]);
+
+    // Large smooth head, separate glossy face screen and chin shell
+    add(new THREE.SphereGeometry(0.69, 56, 40), pearl, [0, 0.34, 0], [0.9, 1.02, 0.78]);
+    add(new THREE.SphereGeometry(0.48, 48, 32), faceGlass, [0, 0.31, 0.49], [1.05, 0.75, 0.34]);
+    // Eyes are soft vertical capsules, giving a friendly animated expression
+    for (const x of [-0.19, 0.19]) {
+      const eye = add(new THREE.SphereGeometry(0.095, 28, 24), glow, [x, 0.36, 0.77], [0.72, 1.42, 0.42]);
+      eye.rotation.z = x < 0 ? 0.08 : -0.08;
+      add(new THREE.SphereGeometry(0.026, 16, 12), bright, [x - 0.018, 0.405, 0.795]);
     }
-    // Side audio / sensor pods
-    for (const x of [-0.59, 0.59]) {
-      const pod = add(new THREE.CylinderGeometry(0.16, 0.16, 0.18, 32), trim, [x, 0.23, 0.02]);
-      pod.rotation.z = Math.PI / 2;
-      add(new THREE.SphereGeometry(0.115, 24, 20), glow, [x * 1.04, 0.23, 0.13]);
-    }
-    // Helmet crest and small illuminated details
-    add(new THREE.BoxGeometry(0.28, 0.055, 0.12), glow, [0, 1.03, 0.02]);
+    // Small smile indicator and cheek lights
+    add(new THREE.TorusGeometry(0.105, 0.012, 8, 32, Math.PI), trim, [0, 0.12, 0.785]).rotation.z = Math.PI;
+    for (const x of [-0.33, 0.33]) add(new THREE.SphereGeometry(0.035, 18, 14), glow, [x, 0.17, 0.72]);
+
+    // Floating ear modules and side fins
     for (const x of [-0.68, 0.68]) {
-      add(new THREE.SphereGeometry(0.075, 20, 16), glow, [x, -0.86, 0.42]);
-      add(new THREE.BoxGeometry(0.12, 0.035, 0.08), trim, [x, -1.04, 0.56]);
+      const ear = add(new THREE.SphereGeometry(0.2, 32, 24), armor, [x, 0.28, 0], [0.72, 1.15, 0.78]);
+      ear.rotation.z = x < 0 ? -0.18 : 0.18;
+      add(new THREE.SphereGeometry(0.105, 24, 18), glow, [x * 1.04, 0.28, 0.12]);
+      const fin = add(new THREE.ConeGeometry(0.13, 0.42, 5), trim, [x * 0.91, 0.63, -0.02]);
+      fin.rotation.z = x < 0 ? 0.42 : -0.42;
     }
-    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.31, 0.025, 12, 64), glow);
-    halo.position.set(0, 1.16, -0.1); robot.add(halo);
+
+    // Short antenna with a floating luminous orb
+    add(new THREE.CylinderGeometry(0.025, 0.04, 0.24, 16), trim, [0, 1.04, 0]);
+    add(new THREE.SphereGeometry(0.105, 28, 20), glow, [0, 1.2, 0]);
+    // Small shoulder shells and metallic side details
+    for (const x of [-0.69, 0.69]) {
+      add(new THREE.SphereGeometry(0.27, 32, 24), pearl, [x, -0.84, 0.02], [1.15, 0.82, 0.8]);
+      add(new THREE.TorusGeometry(0.105, 0.022, 10, 32), glow, [x, -0.85, 0.24]);
+    }
+    // Orbiting holographic rings: independent motion makes the character feel alive
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.82, 0.012, 8, 96), glow);
+    halo.position.set(0, 0.28, -0.22);
+    halo.rotation.x = Math.PI / 2.8;
+    robot.add(halo);
+    const halo2 = new THREE.Mesh(new THREE.TorusGeometry(0.96, 0.008, 8, 96), trim);
+    halo2.position.set(0, 0.24, -0.28);
+    halo2.rotation.set(0.9, 0.35, 0.2);
+    robot.add(halo2);
     const clock = new THREE.Clock();
     let frame = 0;
     let width = 0, height = 0;
@@ -101,8 +119,10 @@ export default function Companion3D({ id, name }: { id: string; name: string }) 
       robot.position.y = Math.sin(t * 1.55) * 0.055;
       robot.rotation.y = Math.sin(t * 0.7) * 0.17;
       robot.rotation.x = Math.sin(t * 0.9) * 0.025;
-      halo.rotation.y = t * 0.8;
-      halo.rotation.x = 0.35 + Math.sin(t) * 0.08;
+      halo.rotation.y = t * 0.72;
+      halo.rotation.x = Math.PI / 2.8 + Math.sin(t * 0.8) * 0.12;
+      halo2.rotation.z = t * -0.48;
+      halo2.rotation.x = 0.9 + Math.sin(t * 0.65) * 0.1;
       renderer.render(scene, camera);
     };
     animate();
