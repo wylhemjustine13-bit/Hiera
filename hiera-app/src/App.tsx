@@ -169,6 +169,10 @@ export default function App() {
   function updateSetting(key: string, value: any) { setSettingsValues((current) => ({ ...current, [key]: value })); }
   useEffect(() => { localStorage.setItem('hiera-developer-mode', String(developerMode)); }, [developerMode]);
   function handleBrandTap() {
+    setSidebarOpen((open) => !open);
+  }
+  function handleDeveloperTriggerTap() {
+    setShowArchived((value) => !value);
     const now = Date.now();
     if (now - brandTapRef.current.lastTap > 2500) brandTapRef.current.count = 0;
     brandTapRef.current.lastTap = now;
@@ -183,7 +187,6 @@ export default function App() {
       setDeveloperNotice('Hiera Developer Studio est déverrouillé sur cet appareil.');
       window.setTimeout(() => setDeveloperNotice(''), 3500);
     }
-    setSidebarOpen((open) => !open);
   }
   function persistConversation(items: Message[], id = currentConversationId) {
     if (privateMode || !items.length || settingsValues.saveHistory === false) return;
@@ -920,7 +923,7 @@ export default function App() {
             <button type="button" className={`side-link ${settingsOpen && settingsPage === "history" ? "active" : ""}`} onClick={() => { setLearningOpen(false); setSettingsOpen(true); setSettingsPage("history"); if (window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false); }}><span>▣</span><b>Historique</b></button>
           </nav>
         </div>
-        {!privateMode && <><div className="history-heading">CONVERSATIONS</div><div className="conversation-history">{conversations.filter((item) => !!item.archived === showArchived).slice(0,12).map((item) => <div className="history-row" key={item.id}><button className="history-open" onClick={() => openConversation(item)} title={item.title}>{item.title}</button><button className="history-action" onClick={() => archiveConversation(item.id)} aria-label={item.archived ? "Désarchiver" : "Archiver"}>{item.archived ? "↩" : "▣"}</button></div>)}</div><button className="history-toggle" onClick={() => setShowArchived((v) => !v)}>{showArchived ? "Voir les conversations" : "Voir les archivées"}</button><button className="history-clear" onClick={clearAllHistory} disabled={busy || conversations.length === 0}>⌫ Supprimer tout l’historique</button></>}</div>
+        {!privateMode && <><div className="history-heading">CONVERSATIONS</div><div className="conversation-history">{conversations.filter((item) => !!item.archived === showArchived).slice(0,12).map((item) => <div className="history-row" key={item.id}><button className="history-open" onClick={() => openConversation(item)} title={item.title}>{item.title}</button><button className="history-action" onClick={() => archiveConversation(item.id)} aria-label={item.archived ? "Désarchiver" : "Archiver"}>{item.archived ? "↩" : "▣"}</button></div>)}</div><button className="history-toggle" onClick={handleDeveloperTriggerTap} title="Afficher les conversations archivées">{showArchived ? "Voir les conversations" : "Voir les archivées"}</button><button className="history-clear" onClick={clearAllHistory} disabled={busy || conversations.length === 0}>⌫ Supprimer tout l’historique</button></>}</div>
         <div className="sidebar-bottom"><div className="sidebar-account"><div className="account-status"><span className="status-dot" /> {googleUser ? "Google connecté" : "Compte non connecté"}</div><div className="account-provider"><span className="google-g">G</span><span>{googleUser ? googleUser.email : "Gérer dans Paramètres"}</span></div></div></div>
       </aside>
       {sidebarOpen && <button className="sidebar-dismiss-zone" onClick={() => setSidebarOpen(false)} aria-label="Rétracter la barre latérale" />}
